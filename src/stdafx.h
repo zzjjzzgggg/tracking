@@ -22,17 +22,4 @@
 #include <adv/rngutils.h>
 #include <graph/graph.h>
 
-#define BUCKET_SIZE 256
-#define MAX_HOP 256
-
-#define GET_BUCKET(node) ((node) / BUCKET_SIZE)
-#define GET_OFFSET(node) ((node) % BUCKET_SIZE)
-#define FIRST_NODE_IN_BUCKET(bucket) ((bucket)*BUCKET_SIZE)
-
-using std::vector;
-using std::string;
-using std::unordered_map;
-using std::unordered_set;
-
-using namespace graph;
 using namespace fmt::literals;
