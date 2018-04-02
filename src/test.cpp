@@ -11,10 +11,31 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include <iostream>
+#include <bitset>
+
+void test_bit_max() {
+    int L = 0x11, H = 0x88;
+
+    std::cout << "L: " << std::bitset<8>(L) << std::endl;
+    std::cout << "H: " << std::bitset<8>(H) << std::endl;
+
+    int x = 0x14, y = 0x43;
+    std::cout << "x: " << std::bitset<8>(x) << std::endl;
+    std::cout << "y: " << std::bitset<8>(y) << std::endl;
+
+    int z = ((((x | H) - (y & ~H)) | (x ^ y)) ^ (x | ~y)) & H;
+    std::cout << "z: " << std::bitset<8>(z) << std::endl;
+
+    int m = ((((z >> 3) | H) - L) | H) ^ z;
+    std::cout << "m: " << std::bitset<8>(m) << std::endl;
+
+    int r = (x & m) | (y & ~m);
+    std::cout << "r: " << std::bitset<8>(r) << std::endl;
+}
+
 int main(int argc, char* argv[]) {
-    std::unordered_map<int, int> m;
-    m[1] = m.find(1) == m.end() ? 0 : 1;
-    printf("%d\n", m[1]);
+    test_bit_max();
 
     return 0;
 }
