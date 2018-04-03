@@ -23,3 +23,4 @@
 #include <graph/graph.h>
 
 using namespace fmt::literals;
+using namespace graph;
