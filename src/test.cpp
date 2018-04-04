@@ -34,6 +34,7 @@ void test_bit_max() {
     std::cout << "r: " << std::bitset<8>(r) << std::endl;
 }
 
+
 int main(int argc, char* argv[]) {
     test_bit_max();
 
