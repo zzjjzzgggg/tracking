@@ -3,9 +3,9 @@
  * Distributed under terms of the MIT license.
  */
 
-#include "dyngraph_mgr.h"
+#include "dyn_dgraph_mgr.h"
 
-int DynGraphMgr::getCC(const int u) {
+int DynDGraphMgr::getCC(const int u) {
     if (nd_cc_.find(u) != nd_cc_.end())
         return nd_cc_.at(u);
     else
@@ -13,7 +13,7 @@ int DynGraphMgr::getCC(const int u) {
     return u;
 }
 
-int DynGraphMgr::getPos(const int cc) {
+int DynDGraphMgr::getPos(const int cc) {
     // if cc is an existing cc
     if (cc_bitpos_.find(cc) != cc_bitpos_.end()) return cc_bitpos_.at(cc);
 
@@ -32,7 +32,7 @@ int DynGraphMgr::getPos(const int cc) {
     return pos;
 }
 
-void DynGraphMgr::freePos(const int pos) {
+void DynDGraphMgr::freePos(const int pos) {
     // clean range [start, end)
     auto start = bits_.begin();
     std::advance(start, pos);
@@ -44,7 +44,7 @@ void DynGraphMgr::freePos(const int pos) {
     cc_bitpos_.erase(pos);
 }
 
-void DynGraphMgr::reverseFanOut(const dir::DGraph& G, const int cv,
+void DynDGraphMgr::reverseFanOut(const dir::DGraph& G, const int cv,
                                 std::unordered_set<int>& modified) {
     if (!G.isNode(cv)) return;
     const auto& nd = G[cv];
@@ -55,7 +55,7 @@ void DynGraphMgr::reverseFanOut(const dir::DGraph& G, const int cv,
     }
 }
 
-void DynGraphMgr::addEdge(const int u, const int v) {
+void DynDGraphMgr::addEdge(const int u, const int v) {
     int cu = getCC(u), cv = getCC(v);
     // omit self-loop edges and edges already in DAG
     if (cu != cv && !DAG_.isEdge(cu, cv)) {
@@ -64,12 +64,12 @@ void DynGraphMgr::addEdge(const int u, const int v) {
     }
 }
 
-void DynGraphMgr::addEdges(const std::vector<std::pair<int, int>>& edges) {
-    // new_cc_edges_.clear();
+void DynDGraphMgr::addEdges(const std::vector<std::pair<int, int>>& edges) {
+    new_cc_edges_.clear();
     for (auto& edge : edges) addEdge(edge.first, edge.second);
 }
 
-std::vector<int> DynGraphMgr::updateDAG() {
+std::vector<int> DynDGraphMgr::updateDAG() {
     SCCVisitor<dir::DGraph> dfs(DAG_);
     dfs.performDFS();
 
@@ -80,12 +80,12 @@ std::vector<int> DynGraphMgr::updateDAG() {
     auto cc_edges_vec = dfs.getCCEdges();
 
     // re-arrange current CCs
-    std::unordered_map<int, int> cco_ccn;  // old-CC -> new-CC mapping
+    std::unordered_map<int, int> co_cn;  // old-CC -> new-CC mapping
     std::vector<std::vector<int>> cc_cc;
     int cc = -1;
     for (auto& pr : dfs.getCNEdges()) {
         int ccn = pr.first, cco = pr.second;
-        cco_ccn[cco] = ccn;
+        co_cn[cco] = ccn;
         if (cc != ccn) {
             cc = ccn;
             cc_cc.push_back({ccn});
@@ -102,7 +102,6 @@ std::vector<int> DynGraphMgr::updateDAG() {
             genHLLCounter(pos0);
             modified.insert(ccs[0]);
         }
-
         for (int i = 1; i < ccs.size(); i++) {
             int pos1 = getPos(ccs[i]);
             if (cc_.find(ccs[i]) == cc_.end()) genHLLCounter(pos1);
@@ -112,12 +111,12 @@ std::vector<int> DynGraphMgr::updateDAG() {
         }
     }
 
-    // also need to check new edges between CCs
+    // also need to check new edges between two CCs
     dir::DGraph sub_DAG;
     for (auto& edge : new_cc_edges_) {
-        int cci = cco_ccn.at(edge.first), ccj = cco_ccn.at(edge.second);
-        if (cci != ccj || modified.find(ccj) == modified.end())
-            sub_DAG.addEdge(cci, ccj);
+        int ci = co_cn.at(edge.first), cj = co_cn.at(edge.second);
+        if (ci != cj || modified.find(cj) == modified.end())
+            sub_DAG.addEdge(ci, cj);
     }
 
     // update DAG
@@ -126,13 +125,11 @@ std::vector<int> DynGraphMgr::updateDAG() {
 
     // update CC bits in topological order
     for (auto it = cc_new_vec.rbegin(); it != cc_new_vec.rend(); it++) {
-        int ccj = *it;
-        if (modified.find(ccj) != modified.end()) {
-            // if ccj is modified, then do reverse fan-out
-            reverseFanOut(DAG_, ccj, modified);
-        } else {
-            // if an old CC has new in-coming edges
-            reverseFanOut(sub_DAG, ccj, modified);
+        int cj = *it;
+        if (modified.find(cj) != modified.end()) {  // if cj is modified
+            reverseFanOut(DAG_, cj, modified);      // then do reverse fan-out
+        } else {  // if an old CC has new in-coming edges
+            reverseFanOut(sub_DAG, cj, modified);
         }
     }
 
@@ -144,8 +141,9 @@ std::vector<int> DynGraphMgr::updateDAG() {
     std::vector<int> affected_nodes;
     for (auto& pr : nd_cc_) {
         int nd = pr.first, &cc = pr.second;
-        cc = cco_ccn.at(cc);
+        cc = co_cn.at(cc);
         if (modified.find(cc) != modified.end()) affected_nodes.push_back(nd);
     }
+
     return affected_nodes;
 }
