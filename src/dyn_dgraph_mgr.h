@@ -35,7 +35,7 @@ private:
 public:
     DynDGraphMgr(const int p = 12) : HyperANF(p) {}
 
-    void addEdge(const int u, const int v);
+    void addEdge(const int u, const int v) override;
     void addEdges(const std::vector<std::pair<int, int>>& edges) override;
 
     // Run DFS to identify CCs in DAG, return affected nodes
@@ -43,7 +43,15 @@ public:
 
     std::vector<int> getAffectedNodes() override { return updateDAG(); }
 
+    void clear(const bool deep_clear = false) override {}
+
     double getReward(const int node) const override { return estimate(node); }
+
+    std::vector<int> getNodesAll() const override {
+        std::vector<int> nodes;
+        for (auto& pr : nd_cc_) nodes.push_back(pr.first);
+        return nodes;
+    }
 
     double getReward(const std::vector<int>& S) const override {
         return estimate(S.begin(), S.end());

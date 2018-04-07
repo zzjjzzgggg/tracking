@@ -28,17 +28,30 @@ private:
 
 public:
     DynBGraphMgr() {}
-    virtual ~DynBGraphMgr() {}
+
+    /**
+     * Copy constructor
+     */
+    DynBGraphMgr(const DynBGraphMgr& o)
+        : graph_(o.graph_), affected_venues_(o.affected_venues_) {}
+
+    void addEdge(const int u, const int v) override {
+        if (!graph_.isEdge(u, v)) {
+            graph_.addEdge(u, v);
+            affected_venues_.insert(v);
+        }
+    }
 
     void addEdges(const std::vector<std::pair<int, int>>& edges) override {
-        affected_venues_.clear();
         for (auto& pr : edges) {
-            int u = pr.first, v = pr.second;  // u: user, v: venue
-            if (!graph_.isEdge(u, v)) {
-                graph_.addEdge(u, v);
-                affected_venues_.insert(v);
-            }
+            int u = pr.first, v = pr.second;
+            addEdge(u, v);
         }
+    }
+
+    void clear(const bool deep = false) override {
+        affected_venues_.clear();
+        if (deep) graph_.clear();
     }
 
     std::vector<int> getAffectedNodes() override {
@@ -51,19 +64,30 @@ public:
         return graph_.getNodeR(node).getDeg();
     }
 
+    std::vector<int> getNodesAll() const override {
+        std::vector<int> nodes;
+        for (auto it = graph_.beginNIR(); it != graph_.endNIR(); ++it)
+            nodes.push_back(it->first);
+        return nodes;
+    }
+
     double getReward(const std::vector<int>& S) const override {
+        if (S.empty()) return 0;
         return getReward(S.begin(), S.end());
     }
 
     double getReward(const std::unordered_set<int>& S) const override {
+        if (S.empty()) return 0;
         return getReward(S.begin(), S.end());
     }
 
     double getGain(const int u, const std::vector<int>& S) const override {
+        if (S.empty()) return getReward(u);
         return getGain(u, S.begin(), S.end());
     }
     double getGain(const int u,
                    const std::unordered_set<int>& S) const override {
+        if (S.empty()) return getReward(u);
         return getGain(u, S.begin(), S.end());
     }
 
@@ -76,7 +100,7 @@ double DynBGraphMgr::getGain(const int node, InputIter first,
 
     // covered users by S
     for (; first != last; ++first) {
-        if (graph_.isNodeL(*first)) {
+        if (graph_.isNodeR(*first)) {
             const auto& nd = graph_.getNodeR(*first);
             covered.insert(nd.beginNbr(), nd.endNbr());
         }
@@ -84,7 +108,7 @@ double DynBGraphMgr::getGain(const int node, InputIter first,
     int rwd_S = covered.size();
 
     // covered users by node
-    if (graph_.isNodeL(node)) {
+    if (graph_.isNodeR(node)) {
         const auto& nd = graph_.getNodeR(node);
         covered.insert(nd.beginNbr(), nd.endNbr());
     }
@@ -98,7 +122,7 @@ double DynBGraphMgr::getReward(InputIter first, InputIter last) const {
     std::unordered_set<int> covered;
     for (; first != last; ++first) {
         int v = *first;
-        if (graph_.isNodeL(v)) {
+        if (graph_.isNodeR(v)) {
             const auto& nd_v = graph_.getNodeR(v);
             covered.insert(nd_v.beginNbr(), nd_v.endNbr());
         }

@@ -6,14 +6,15 @@
 #ifndef __SIEVE_ADN_H__
 #define __SIEVE_ADN_H__
 
-#include "input_mgr.h"
+#include "stdafx.h"
 
+template <class InputMgr>
 class SieveADN {
 private:
-    InputMgr& input_mgr_;
-
     int budget_;
     double eps_, gain_mx_ = 0;
+
+    InputMgr input_mgr_;
 
     std::vector<std::unordered_set<int>> S_buf_;
     std::map<int, int> thi_pos_;  // theta_index --> set_position
@@ -46,25 +47,165 @@ private:
     void addTheta(const int i);
     bool updateMaxGain(const std::vector<int>& nodes);
     void updateThresholds();
-    void sieve(const std::vector<int>& nodes);
 
 public:
-    SieveADN(InputMgr& input, const int budget, const double eps)
-        : input_mgr_(input), budget_(budget), eps_(eps) {
+    SieveADN(const int budget, const double eps) : budget_(budget), eps_(eps) {
         // |\Theta| = O(\epsilon^{-1}\log 2k)
         S_buf_.reserve((int)(std::log2(2 * budget_) / eps_));
     }
 
     /**
-     * Process a batch of edges.
+     * Copy constructor.
      */
-    void processBatch(std::vector<std::pair<int, int>>& edges);
+    SieveADN(const SieveADN& o)
+        : budget_(o.budget_), eps_(o.eps_), gain_mx_(o.gain_mx_),
+          input_mgr_(o.input_mgr_), S_buf_(o.S_buf_), thi_pos_(o.thi_pos_),
+          recycle_bin_(o.recycle_bin_) {}
+
+    /**
+     * Add one edge
+     */
+    void addEdge(const int u, const int v) { input_mgr_.addEdge(u, v); }
+
+    /**
+     * Add a batch of edges
+     */
+    void addEdges(const std::vector<std::pair<int, int>>& edges) {
+        input_mgr_.addEdges(edges);
+    }
+    /**
+     * Process a nodes whose gain changes.
+     */
+    void update();
 
     /**
      * Get current maximum reward
      */
-    double getResult() const;
+    std::pair<int, double> getResult() const;
+
+    /**
+     * Get solution
+     */
+    std::vector<int> getSolution(const int i) const {
+        const auto& S = getS(i);
+        return std::vector<int>(S.begin(), S.end());
+    }
+
+    const InputMgr& getInputMgr() const { return input_mgr_; }
+
+    /**
+     * If deep = true, then clean everything, including input_mgr_ and maintaned
+     * graph; otherwise, only clean temporal results maintaned in input_mgr_.
+     */
+    void clear(const bool deep = false);
 
 }; /* SieveADN */
+
+// implementations
+template <class InputMgr>
+void SieveADN<InputMgr>::delTheta(const int i) {
+    int pos = thi_pos_[i];
+    S_buf_[pos].clear();
+    recycle_bin_.push(pos);
+    thi_pos_.erase(i);
+}
+
+template <class InputMgr>
+void SieveADN<InputMgr>::addTheta(const int i) {
+    int pos;
+    if (!recycle_bin_.empty()) {  // if have available room
+        pos = recycle_bin_.top();
+        recycle_bin_.pop();
+        S_buf_[pos].clear();  // make sure it is clean
+    } else {                  // otherwise realloc room
+        pos = S_buf_.size();
+        S_buf_.push_back(std::unordered_set<int>());
+    }
+    thi_pos_[i] = pos;
+}
+
+template <class InputMgr>
+bool SieveADN<InputMgr>::updateMaxGain(const std::vector<int>& nodes) {
+    bool is_changed = false;
+    for (int u : nodes) {
+        double rwd = input_mgr_.getReward(u);
+        if (rwd > gain_mx_) {
+            gain_mx_ = rwd;
+            is_changed = true;
+        }
+    }
+    return is_changed;
+}
+
+template <class InputMgr>
+void SieveADN<InputMgr>::updateThresholds() {
+    int new_li = (int)std::floor(std::log((1 - eps_) * gain_mx_) /
+                                 std::log(1 + eps_)),
+        new_ui = (int)std::ceil(std::log(2 * budget_ * gain_mx_) /
+                                std::log(1 + eps_));
+    int li, ui;               // lower bound and upper bound of theata index
+    if (!thi_pos_.empty()) {  // delete outdated thresholds
+        li = thi_pos_.begin()->first;
+        ui = thi_pos_.rbegin()->first;
+        while (li <= ui && li < new_li) {
+            delTheta(li);
+            li++;
+        }
+    }
+    li = thi_pos_.empty() ? new_li : ui + 1;
+    for (int i = li; i <= new_ui; i++) addTheta(i);
+}
+
+template <class InputMgr>
+void SieveADN<InputMgr>::update() {
+    auto nodes = input_mgr_.getAffectedNodes();
+    if (nodes.empty()) return;
+
+    // update maximum gain
+    bool is_changed = updateMaxGain(nodes);
+
+    // update thresholds if maximum gain changes
+    if (is_changed) updateThresholds();
+
+    // sieve
+    for (int u : nodes) {
+        for (auto& pr : thi_pos_) {
+            int i = pr.first;
+            auto& S = getS(i);
+            if (S.find(u) == S.end() && S.size() < budget_) {
+                double threshold = getThreshold(i),
+                       gain = input_mgr_.getGain(u, S);
+                if (gain >= threshold) S.insert(u);
+            }
+        }
+    }
+}
+
+template <class InputMgr>
+std::pair<int, double> SieveADN<InputMgr>::getResult() const {
+    int i_mx = -100;
+    double rwd_mx = 0;
+    for (auto& pr : thi_pos_) {
+        int i = pr.first;
+        const auto& S = getS(i);
+        double rwd = input_mgr_.getReward(S);
+        if (rwd > rwd_mx) {
+            rwd_mx = rwd;
+            i_mx = i;
+        }
+    }
+    return std::make_pair(i_mx, rwd_mx);
+}
+
+template <class InputMgr>
+void SieveADN<InputMgr>::clear(const bool deep) {
+    input_mgr_.clear(deep);
+    if (deep) {
+        gain_mx_ = 0;
+        thi_pos_.clear();
+        while (!recycle_bin_.empty()) recycle_bin_.pop();
+        for (auto& S : S_buf_) S.clear();
+    }
+}
 
 #endif /* __SIEVE_ADN_H__ */

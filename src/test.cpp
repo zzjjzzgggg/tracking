@@ -8,6 +8,7 @@
 #include <iostream>
 #include <vector>
 #include <queue>
+#include <list>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -34,9 +35,36 @@ void test_bit_max() {
     std::cout << "r: " << std::bitset<8>(r) << std::endl;
 }
 
+class A {
+public:
+    A() {}
+    ~A() { printf("A deleted\n"); }
+};
+class B {
+private:
+    A* a;
+
+public:
+    B() { a = new A(); }
+    ~B() {
+        delete a;
+        printf("B deleted\n");
+    }
+};
+
+void test_delete_in_list(){
+    std::list<B*> b_lst;
+    B* b = new B();
+    b_lst.insert(b_lst.end(), b);
+    // for (auto it = b_lst.begin(); it!= b_lst.end(); ++it) delete *it;
+    delete b_lst.front();
+    b_lst.pop_front();
+    // delete b;
+}
 
 int main(int argc, char* argv[]) {
-    test_bit_max();
+    // test_bit_max();
+    test_delete_in_list();
 
     return 0;
 }
