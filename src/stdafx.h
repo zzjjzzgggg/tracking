@@ -25,3 +25,5 @@
 
 using namespace fmt::literals;
 using namespace graph;
+
+typedef std::pair<int, int> IntPr;

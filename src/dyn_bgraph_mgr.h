@@ -29,11 +29,16 @@ private:
 public:
     DynBGraphMgr() {}
 
-    /**
-     * Copy constructor
-     */
+    // Copy constructor
     DynBGraphMgr(const DynBGraphMgr& o)
         : graph_(o.graph_), affected_venues_(o.affected_venues_) {}
+
+    // copy assignment
+    DynBGraphMgr& operator=(const DynBGraphMgr& o) {
+        graph_ = o.graph_;
+        affected_venues_ = o.affected_venues_;
+        return *this;
+    }
 
     void addEdge(const int u, const int v) override {
         if (!graph_.isEdge(u, v)) {

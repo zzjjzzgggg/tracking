@@ -63,6 +63,20 @@ public:
           recycle_bin_(o.recycle_bin_) {}
 
     /**
+     * Copy assignment.
+     */
+    SieveADN& operator=(const SieveADN& o) {
+        budget_ = o.budget_;
+        eps_ = o.eps_;
+        gain_mx_ = o.gain_mx_;
+        input_mgr_ = o.input_mgr_;
+        S_buf_ = o.S_buf_;
+        thi_pos_ = o.thi_pos_;
+        recycle_bin_ = o.recycle_bin_;
+        return *this;
+    }
+
+    /**
      * Add one edge
      */
     void addEdge(const int u, const int v) { input_mgr_.addEdge(u, v); }

@@ -27,20 +27,20 @@ private:
         /**
          * Copy constructor.
          */
-        Alg(const Alg& alg) : l_(alg.l_), val_(alg.val_) {
-            sieve_ptr_ = new SieveADN<InputMgr>(*alg.sieve_ptr_);
+        Alg(const Alg& o) : l_(o.l_), val_(o.val_) {
+            sieve_ptr_ = new SieveADN<InputMgr>(*o.sieve_ptr_);
         }
 
     }; /* Alg */
 
-    typedef typename std::list<Alg*>::const_iterator Iter;
-
 private:
-    int budget_;
+    int L_, budget_;
     double eps_;
 
-    std::list<Alg*> algs_;        // a list of alg instances
-    std::map<int, Iter> l_iter_;  // lifetime - iterator mapping
+    std::list<Alg*> algs_;  // a list of alg instances
+
+    int cur_ = 0;
+    std::vector<std::vector<IntPr>> edge_buf_;
 
 private:
     /**
@@ -55,17 +55,24 @@ private:
     void removeRedundancy();
 
 public:
-    HistApprox(const int budget, const double eps)
-        : budget_(budget), eps_(eps) {}
+    HistApprox(const int L, const int budget, const double eps)
+        : L_(L), budget_(budget), eps_(eps) {
+        edge_buf_.resize(L);
+    }
     virtual ~HistApprox() {
         for (auto it = algs_.begin(); it != algs_.end(); ++it) delete *it;
     }
 
     /**
-     * Edge with lifetime l will be fed to instances with l' <= l.
-     * Scan alg. instances in in the list from head to tail.
+     * Store edges with lifetime l into buffer.
      */
-    void addEdge(const int u, const int v, const int l);
+    void bufEdges(const std::vector<IntPr>& edges, const int l);
+
+    /**
+     * Feed a batch of edges with lifetime l to instances with l' <= l.
+     * Need to scan alg. instances in in the list from head to tail.
+     */
+    void addEdges(const std::vector<IntPr>& edges, const int l);
 
     /**
      * Update each SieveADN instance.
@@ -85,13 +92,21 @@ public:
 // implementations
 template <class InputMgr>
 void HistApprox<InputMgr>::createAlgIfNecessary(const int l) {
-    if (l_iter_.find(l) != l_iter_.end()) return;
-    auto it = l_iter_.upper_bound(l);
-    if (it == l_iter_.end())  // if l has no successor, then create a new
+    // linear search
+    auto it = algs_.begin();
+    while (it != algs_.end() && (*it)->l_ < l) ++it;
+
+    // then, create an alg instance before it
+    if (it == algs_.end())  // l has no successor, then create a new ins
         algs_.insert(it, new Alg(l, budget_, eps_));
-    else {  // else create a copy of its successor
+    else if ((*it)->l_ > l) {  // create a copy of its successor
         Alg* alg = new Alg(*(*it));
-        // TODO process more edges
+        // Alg* alg = new Alg(l, budget_, eps_);
+        // process edges with lifetime in range [l, (*it)->l_)
+        // for (int ll = l; ll < (*it)->l_; ll++) {
+        //     const auto& history = edge_buf_[(cur_ + ll - 1) % L_];
+        //     if (!history.empty()) alg->sieve_ptr_->addEdges(history);
+        // }
         algs_.insert(it, alg);
     }
 }
@@ -100,11 +115,11 @@ template <class InputMgr>
 void HistApprox<InputMgr>::removeRedundancy() {
     auto start = algs_.begin();
     while (start != algs_.end()) {
-        double bound = *start->val_ * (1 - eps_);
+        double bound = (*start)->val_ * (1 - eps_);
         auto last = start, it = start;
         while (true) {
             ++it;
-            if (it == algs_.end() || *it->val_ < bound) break;
+            if (it == algs_.end() || (*it)->val_ < bound) break;
             ++last;
         }
         if (start != last) {  // delete algs in range (start, last)
@@ -118,31 +133,46 @@ void HistApprox<InputMgr>::removeRedundancy() {
 }
 
 template <class InputMgr>
-void HistApprox<InputMgr>::addEdge(const int u, const int v, const int l) {
+void HistApprox<InputMgr>::bufEdges(const std::vector<IntPr>& edges,
+                                    const int l) {
+    auto& target = edge_buf_[(cur_ + l - 1) % L_];
+    target.insert(target.end(), edges.begin(), edges.end());
+}
+
+template <class InputMgr>
+void HistApprox<InputMgr>::addEdges(const std::vector<IntPr>& edges,
+                                    const int l) {
     createAlgIfNecessary(l);
-    for (auto it = algs_.begin(); it != algs_.end() && *it->l_ <= l; ++it)
-        *it->sieve_ptr_->addEdge(u, v);
+    for (auto it = algs_.begin(); it != algs_.end() && (*it)->l_ <= l; ++it) {
+        (*it)->sieve_ptr_->addEdges(edges);
+        (*it)->sieve_ptr_->update();
+        (*it)->val_ = (*it)->sieve_ptr_->getResult().second;
+    }
+    removeRedundancy();
 }
 
 template <class InputMgr>
 double HistApprox<InputMgr>::update() {
-    for (auto it = algs_.begin(); it != algs_.end(); ++it) {
-        *it->sieve_ptr_->update();
-        *it->val_ = *it->sieve_ptr_->getResult().second;
-    }
-    return algs_.begin()->val_;
+    // for (auto it = algs_.begin(); it != algs_.end(); ++it) {
+    //     (*it)->sieve_ptr_->update();
+    //     (*it)->val_ = (*it)->sieve_ptr_->getResult().second;
+    // }
+    return algs_.front()->val_;
 }
 
 template <class InputMgr>
 void HistApprox<InputMgr>::clear() {
-    if (algs_.begin()->l_ == 1) {
+    if (algs_.front()->l_ == 1) {
         delete algs_.front();
         algs_.pop_front();
     }
     for (auto it = algs_.begin(); it != algs_.end(); ++it) {
-        *it->sieve_ptr_->clear();  // only clear temporal results
-        *it->l_--;
+        (*it)->sieve_ptr_->clear();  // only clear temporal results
+        (*it)->l_--;
     }
+    // clear outdated edges
+    edge_buf_[cur_].clear();
+    cur_ = (cur_ + 1) % L_;
 }
 
 #endif /* __HIST_APPROX_H__ */

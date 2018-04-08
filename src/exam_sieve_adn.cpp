@@ -8,17 +8,17 @@
 #include <gflags/gflags.h>
 
 DEFINE_string(graph, "", "input bipartite graph (user, venue, ...)");
-DEFINE_int32(budget, 100, "budget");
-DEFINE_int32(end_tm, 100, "end time");
-DEFINE_int32(batch_sz, 100, "batch size");
-DEFINE_double(eps, 0.5, "epsilon");
+DEFINE_int32(budget, 10, "budget");
+DEFINE_int32(end_tm, 200, "end time");
+DEFINE_int32(batch_sz, 10, "batch size");
+DEFINE_double(eps, 0.2, "epsilon");
 
 int main(int argc, char *argv[]) {
     gflags::SetUsageMessage("usage:");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
     osutils::Timer tm;
 
-    SieveADN<DynBGraphMgr> sieveADN{FLAGS_budget, FLAGS_eps};
+    SieveADN<DynBGraphMgr> adn{FLAGS_budget, FLAGS_eps};
 
     std::vector<std::pair<int, int>> edges;
     std::vector<std::pair<int, double>> tm_rwd;
@@ -29,16 +29,16 @@ int main(int argc, char *argv[]) {
         int u = ss.get<int>(0), v = ss.get<int>(1);
         edges.emplace_back(u, v);
         if (edges.size() == FLAGS_batch_sz) {
-            sieveADN.addEdges(edges);
-            sieveADN.update();
+            adn.addEdges(edges);
+            adn.update();
+            double val = adn.getResult().second;
 
-            auto rst = sieveADN.getResult();
-            printf("\t%d\t\t%.0f\r", ++t, rst.second);
-            fflush(stdout);
-            rst.first = t;
-            tm_rwd.push_back(std::move(rst));
-
+            adn.clear();
             edges.clear();
+
+            printf("\t%d\t\t%.0f\r", ++t, val);
+            fflush(stdout);
+            tm_rwd.emplace_back(t, val);
         }
         if (t == FLAGS_end_tm) break;
     }
@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
 
     // save results
     std::string ofnm = strutils::insertMiddle(
-        FLAGS_graph, "SieveAdn_E{:g}"_format(FLAGS_eps), "dat");
+        FLAGS_graph, "adn_k{}e{:g}"_format(FLAGS_budget, FLAGS_eps), "dat");
     std::string ano = fmt::format(
         "#graph: {}\n#budget: {}\n#batch size: {}\n#end time: {}\n#epsilon: "
         "{:.2f}\n",

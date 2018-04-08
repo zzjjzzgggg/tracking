@@ -21,6 +21,11 @@ target_link_libraries(exam_sieve_adn dyn_dgraph_mgr)
 add_executable(exam_basic exam_basic.cpp)
 target_link_libraries(exam_basic dyn_dgraph_mgr)
 
+add_executable(exam_hist exam_hist.cpp)
+target_link_libraries(exam_hist dyn_dgraph_mgr)
+
+
+# Greedy
 add_executable(exam_greedy_adn exam_greedy_adn.cpp)
 target_link_libraries(exam_greedy_adn dyn_dgraph_mgr greedy_alg)
 

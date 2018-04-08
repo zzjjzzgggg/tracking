@@ -52,7 +52,7 @@ public:
     }
 };
 
-void test_delete_in_list(){
+void test_delete_in_list() {
     std::list<B*> b_lst;
     B* b = new B();
     b_lst.insert(b_lst.end(), b);
@@ -62,9 +62,19 @@ void test_delete_in_list(){
     // delete b;
 }
 
+void test_set_copy() {
+    std::unordered_map<int, int> a;
+    a[0] = 1;
+    std::unordered_map<int, int> b = a;
+    b[1] = 2;
+
+    printf("a: %lu, b:%lu\n", a.size(), b.size());
+}
+
 int main(int argc, char* argv[]) {
     // test_bit_max();
-    test_delete_in_list();
+    // test_delete_in_list();
+    test_set_copy();
 
     return 0;
 }

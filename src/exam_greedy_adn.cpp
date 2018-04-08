@@ -7,9 +7,9 @@
 
 #include <gflags/gflags.h>
 
-DEFINE_int32(budget, 100, "budget");
+DEFINE_int32(budget, 10, "budget");
 DEFINE_int32(end_tm, 200, "end time");
-DEFINE_int32(batch_sz, 100, "batch size");
+DEFINE_int32(batch_sz, 10, "batch size");
 DEFINE_string(graph, "", "input bipartite graph (user, venue, time)");
 
 int main(int argc, char *argv[]) {
@@ -30,19 +30,22 @@ int main(int argc, char *argv[]) {
         edges.emplace_back(u, v);
         if (edges.size() == FLAGS_batch_sz) {
             input_mgr.addEdges(edges);
-            double rwd = greedy.run();
+            double val = greedy.run();
 
-            printf("\t%d\t\t%.0f\r", ++t, rwd);
-            fflush(stdout);
-            tm_rwd.emplace_back(t, rwd);
+            input_mgr.clear();
             edges.clear();
+
+            printf("\t%d\t\t%.0f\r", ++t, val);
+            fflush(stdout);
+            tm_rwd.emplace_back(t, val);
         }
         if (t == FLAGS_end_tm) break;
     }
     printf("\n");
 
     // save results
-    std::string ofnm = strutils::insertMiddle(FLAGS_graph, "greedy_adn", "dat");
+    std::string ofnm = strutils::insertMiddle(
+        FLAGS_graph, "greedy_adn_k{}"_format(FLAGS_budget), "dat");
     std::string ano =
         "#graph: {}\nbudget: {}\n#batch size: {}\n#end time: {}\n"_format(
             FLAGS_graph, FLAGS_budget, FLAGS_batch_sz, FLAGS_end_tm);
