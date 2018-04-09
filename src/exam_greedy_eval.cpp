@@ -20,7 +20,7 @@ int main(int argc, char *argv[]) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
     osutils::Timer tm;
 
-    BasicReduction<DynBGraphMgr> basic(FLAGS_L, FLAGS_budget);
+    EvalStream<DynBGraphMgr> eval(FLAGS_L);
 
     std::vector<std::pair<int, double>> tm_val;
 
@@ -28,13 +28,16 @@ int main(int argc, char *argv[]) {
     ioutils::TSVParser ss(FLAGS_graph);
     while (ss.next()) {
         int u = ss.get<int>(0), v = ss.get<int>(1), l = ss.get<int>(3);
-        basic.addEdge(u, v, l);
+        eval.addEdge(u, v, l);
         ++num;
         if (num == FLAGS_batch_sz) {
-            GreedyAlg greedy(&basic.getInputMgr(), FLAGS_budget);
+            auto& input_mgr = eval.getInputMgr();
+            // input_mgr.getGraphStat();
+
+            GreedyAlg greedy(&input_mgr, FLAGS_budget);
             double val = greedy.run();
 
-            basic.clear();
+            eval.clear();
             num = 0;
 
             printf("\t%d\t\t%.0f\r", ++t, val);

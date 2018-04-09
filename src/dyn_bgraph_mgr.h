@@ -96,6 +96,11 @@ public:
         return getGain(u, S.begin(), S.end());
     }
 
+    void getGraphStat() const {
+        printf("nodes L: %d, nodes R: %d, edges: %d\n", graph_.getNodesL(),
+               graph_.getNodesR(), graph_.getEdges());
+    }
+
 }; /* DynBGraphMgr */
 
 template <class InputIter>

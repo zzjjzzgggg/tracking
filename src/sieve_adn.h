@@ -175,11 +175,8 @@ void SieveADN<InputMgr>::update() {
     auto nodes = input_mgr_.getAffectedNodes();
     if (nodes.empty()) return;
 
-    // update maximum gain
-    bool is_changed = updateMaxGain(nodes);
-
-    // update thresholds if maximum gain changes
-    if (is_changed) updateThresholds();
+    // update maximum gain and thresholds
+    if (updateMaxGain(nodes)) updateThresholds();
 
     // sieve
     for (int u : nodes) {
@@ -201,8 +198,7 @@ std::pair<int, double> SieveADN<InputMgr>::getResult() const {
     double rwd_mx = 0;
     for (auto& pr : thi_pos_) {
         int i = pr.first;
-        const auto& S = getS(i);
-        double rwd = input_mgr_.getReward(S);
+        double rwd = input_mgr_.getReward(getS(i));
         if (rwd > rwd_mx) {
             rwd_mx = rwd;
             i_mx = i;

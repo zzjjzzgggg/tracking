@@ -38,43 +38,37 @@ void test_bit_max() {
 class A {
 public:
     A() {}
-    ~A() { printf("A deleted\n"); }
+    ~A() {}
 };
+
 class B {
-private:
+public:
+    int l;
     A* a;
 
 public:
-    B() { a = new A(); }
-    ~B() {
-        delete a;
-        printf("B deleted\n");
-    }
+    B(int x) : l(x) { a = new A(); }
+    ~B() { delete a; }
 };
 
-void test_delete_in_list() {
-    std::list<B*> b_lst;
-    B* b = new B();
-    b_lst.insert(b_lst.end(), b);
-    // for (auto it = b_lst.begin(); it!= b_lst.end(); ++it) delete *it;
-    delete b_lst.front();
-    b_lst.pop_front();
-    // delete b;
-}
+void test_copy_in_list() {
+    std::list<B*> lst;
+    B* b1 = new B(1);
+    B* b2 = new B(*b1);
 
-void test_set_copy() {
-    std::unordered_map<int, int> a;
-    a[0] = 1;
-    std::unordered_map<int, int> b = a;
-    b[1] = 2;
+    lst.insert(lst.end(), b1);
+    lst.insert(lst.end(), b2);
 
-    printf("a: %lu, b:%lu\n", a.size(), b.size());
+    b2->l++;
+
+
+    for (auto it = lst.begin(); it!= lst.end(); ++it)
+        printf("%d\n", (*it)->l);
 }
 
 int main(int argc, char* argv[]) {
     // test_bit_max();
-    // test_delete_in_list();
-    test_set_copy();
+    test_copy_in_list();
 
     return 0;
 }

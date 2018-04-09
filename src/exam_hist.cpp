@@ -10,7 +10,7 @@
 DEFINE_string(graph, "", "input bipartite graph (user, venue, ...)");
 DEFINE_int32(budget, 50, "budget");
 DEFINE_int32(end_tm, 100, "end time");
-DEFINE_int32(batch_sz, 100, "batch size");
+DEFINE_int32(batch_sz, 10, "batch size");
 DEFINE_int32(L, 10, "maximum lifetime");
 DEFINE_double(eps, 0.2, "epsilon");
 
@@ -33,14 +33,14 @@ int main(int argc, char* argv[]) {
         ++num;
         if (num == FLAGS_batch_sz) {
             for (auto& pr : edge_batch) hist.addEdges(pr.second, pr.first);
-            double val = hist.update();
+            double val = hist.getResult().second;
             for (auto& pr : edge_batch)
                 if (pr.first > 1) hist.bufEdges(pr.second, pr.first);
             edge_batch.clear();
             hist.clear();
             num = 0;
 
-            printf("\t%d\t\t%.0f\t\r", ++t, val);
+            printf("%5d\t%5.0f\r", ++t, val);
             fflush(stdout);
             tm_val.emplace_back(t, val);
         }
