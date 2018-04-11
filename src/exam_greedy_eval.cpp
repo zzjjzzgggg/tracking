@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
     int t = 0, num = 0;
     ioutils::TSVParser ss(FLAGS_graph);
     while (ss.next()) {
-        int u = ss.get<int>(0), v = ss.get<int>(1), l = ss.get<int>(3);
+        int u = ss.get<int>(0), v = ss.get<int>(1), l = ss.get<int>(2);
         eval.addEdge(u, v, l);
         ++num;
         if (num == FLAGS_batch_sz) {

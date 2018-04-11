@@ -8,7 +8,7 @@
 #include <gflags/gflags.h>
 
 DEFINE_int32(budget, 10, "budget");
-DEFINE_int32(end_tm, 200, "end time");
+DEFINE_int32(end_tm, 100, "end time");
 DEFINE_int32(batch_sz, 10, "batch size");
 DEFINE_string(graph, "", "input bipartite graph (user, venue, time)");
 
@@ -20,7 +20,7 @@ int main(int argc, char *argv[]) {
     DynBGraphMgr input_mgr;
     GreedyAlg greedy{&input_mgr, FLAGS_budget};
 
-    std::vector<std::pair<int, int>> edges;
+    std::vector<IntPr> edges;
     std::vector<std::pair<int, double>> tm_rwd;
 
     int t = 0;

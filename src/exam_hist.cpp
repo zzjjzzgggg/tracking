@@ -28,7 +28,7 @@ int main(int argc, char* argv[]) {
     int t = 0, num = 0;
     ioutils::TSVParser ss(FLAGS_graph);
     while (ss.next()) {
-        int u = ss.get<int>(0), v = ss.get<int>(1), l = ss.get<int>(3);
+        int u = ss.get<int>(0), v = ss.get<int>(1), l = ss.get<int>(2);
         edge_batch[l].emplace_back(u, v);
         ++num;
         if (num == FLAGS_batch_sz) {
@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
             hist.clear();
             num = 0;
 
-            printf("%5d\t%5.0f\r", ++t, val);
+            printf("%5d\t%5.0f\t%s\r", ++t, val, hist.getInfo().c_str());
             fflush(stdout);
             tm_val.emplace_back(t, val);
         }

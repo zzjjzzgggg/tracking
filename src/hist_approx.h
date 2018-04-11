@@ -2,7 +2,6 @@
  * Copyright (C) by J.Z. (04/06/2018 22:45)
  * Distributed under terms of the MIT license.
  */
-
 #ifndef __HIST_APPROX_H__
 #define __HIST_APPROX_H__
 
@@ -11,10 +10,13 @@
 template <class InputMgr>
 class HistApprox {
 private:
+    /**
+     * SieveADN instance.
+     * Only process edges with lifetime no less than l
+     */
     class Alg {
     public:
-        int l_;  // this alg only process edges with lifetime no less than l_
-        int i_;
+        int l_, i_;
         double val_;  // current solution value of this algorithm instance
 
         SieveADN<InputMgr>* sieve_ptr_;
@@ -35,10 +37,15 @@ private:
 
         void clear() { sieve_ptr_->clear(); }
 
-        void update() {
+        inline void updateVal() {
+            sieve_ptr_->update();
             auto rst = sieve_ptr_->getResult();
             i_ = rst.first;
             val_ = rst.second;
+        }
+
+        inline void addEdges(const std::vector<IntPr>& edges) {
+            sieve_ptr_->addEdges(edges);
         }
 
     }; /* Alg */
@@ -53,11 +60,6 @@ private:
     std::vector<std::vector<IntPr>> edge_buf_;
 
 private:
-    /**
-     * Create an Alg instance and place it at the correct position in the list.
-     */
-    void createAlgIfNecessary(const int l);
-
     /**
      * Remove epsion-reduction alg instances from the list according instances'
      * current output.
@@ -86,12 +88,38 @@ public:
      * Need to scan alg. instances in in the list from head to tail.
      */
     void addEdges(const std::vector<IntPr>& edges, const int l) {
-        createAlgIfNecessary(l);
-        for (auto it = algs_.begin(); it != algs_.end() && (*it)->l_ <= l;
-             ++it) {
-            (*it)->sieve_ptr_->addEdges(edges);
-            (*it)->sieve_ptr_->update();
-            (*it)->update();
+        auto it = algs_.begin();
+        while (it != algs_.end() && (*it)->l_ <= l) {
+            (*it)->addEdges(edges);
+            (*it)->updateVal();
+            ++it;
+        }
+        // check whether or not need to create a new Alg instance
+        if (it == algs_.end()) {  // reach tail?
+            auto tail = algs_.rbegin();
+            // create a new Alg if the list is empty or its tail has smaller l
+            if (tail == algs_.rend() || (*tail)->l_ < l) {
+                Alg* alg = new Alg(l, budget_, eps_);
+                alg->addEdges(edges);
+                alg->updateVal();
+                algs_.insert(algs_.end(), alg);
+            }
+        } else {
+            auto ancestor = it;
+            // create an Alg based on its ancestor
+            if (ancestor == algs_.begin() || (*--it)->l_ < l) {
+                Alg* alg = new Alg(*(*ancestor));
+                alg->l_ = l;
+                // process new edges
+                alg->addEdges(edges);
+                // process history edges with lifetime in range [l, l^*)
+                for (int ll = l; ll < (*ancestor)->l_; ll++) {
+                    const auto& history = edge_buf_[(cur_ + ll - 1) % L_];
+                    if (!history.empty()) alg->addEdges(history);
+                }
+                alg->updateVal();
+                algs_.insert(ancestor, alg);
+            }
         }
         rmRedundancy();
     }
@@ -104,37 +132,18 @@ public:
         return algs_.front()->sieve_ptr_->getSolution(i);
     }
 
+    std::string getInfo() const {
+        return fmt::format("{:5d}", algs_.size());
+    }
     /**
-     * Prepare for next time step.
-     * Deleta the head instance if its l=1, and conduct light clean for other
-     * instances.
+     * Prepare for next time step. Deleta the head instance if its l=1, and
+     * conduct light clean for other instances.
      */
     void clear();
 
 }; /* HistApprox */
 
 // implementations
-template <class InputMgr>
-void HistApprox<InputMgr>::createAlgIfNecessary(const int l) {
-    // linear search
-    auto it = algs_.begin();
-    while (it != algs_.end() && (*it)->l_ < l) ++it;
-
-    // then, create an alg instance before it
-    if (it == algs_.end()) {  // l has no successor, then create a new ins
-        algs_.insert(it, new Alg(l, budget_, eps_));
-    } else if ((*it)->l_ > l) {  // create a copy of its successor
-        Alg* alg = new Alg(*(*it));
-        alg->l_ = l;
-        // process edges with lifetime in range [l, (*it)->l_)
-        for (int ll = l; ll < (*it)->l_; ll++) {
-            const auto& history = edge_buf_[(cur_ + ll - 1) % L_];
-            if (!history.empty()) alg->sieve_ptr_->addEdges(history);
-        }
-        algs_.insert(it, alg);
-    }
-}
-
 template <class InputMgr>
 void HistApprox<InputMgr>::rmRedundancy() {
     auto start = algs_.begin();
