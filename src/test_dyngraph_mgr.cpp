@@ -17,7 +17,7 @@ int main(int argc, char* argv[]) {
     std::string gfn = "/home/jzzhao/workspace/streaming/test_graph.txt";
 
     dir::DGraph graph = loadEdgeList<dir::DGraph>(gfn);
-    DirBFS bfs(graph);
+    DirBFS<dir::DGraph> bfs(graph);
 
     auto edges = ioutils::loadPrVec<int, int>(gfn);
 
