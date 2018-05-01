@@ -15,6 +15,8 @@
 #include <iostream>
 #include <bitset>
 
+#include <adv/LRUCache.h>
+
 void test_bit_max() {
     int L = 0x11, H = 0x88;
 
@@ -61,14 +63,23 @@ void test_copy_in_list() {
 
     b2->l++;
 
+    for (auto it = lst.begin(); it != lst.end(); ++it) printf("%d\n", (*it)->l);
+}
 
-    for (auto it = lst.begin(); it!= lst.end(); ++it)
-        printf("%d\n", (*it)->l);
+void test_lru() {
+    lru::Cache<std::string, std::string> cache(3);
+    cache.insert("hello", "world");
+    cache.insert("foo", "bar");
+
+    std::cout << "checking refresh : " << cache.get("hello") << std::endl;
+    cache.insert("hello1", "world1");
+    cache.insert("foo1", "bar1");
 }
 
 int main(int argc, char* argv[]) {
     // test_bit_max();
-    test_copy_in_list();
+    // test_copy_in_list();
+    test_lru();
 
     return 0;
 }

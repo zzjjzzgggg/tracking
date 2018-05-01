@@ -17,7 +17,8 @@ else()
   message(FATAL_ERROR "Please install a modern C++ compiler.")
 endif()
 
-# set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_BUILD_TYPE "Release")
+# set(CMAKE_BUILD_TYPE "Debug")
 # set(CMAKE_CXX_COMPILER=/usr/bin/g++)
 # set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-pthread")
 

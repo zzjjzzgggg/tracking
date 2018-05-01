@@ -12,15 +12,15 @@ class GreedyAlg {
 private:
     class Elem {
     public:
-        int seq, node;      // seq: the round number that gain is updated
-        double gain, time;  // chosen time in seconds
+        int seq, node;  // seq: the round number that gain is updated
+        double gain;
 
     public:
         Elem() : node(-1), seq(-1), gain(-1) {}
         Elem(int v, int s = 0, double g = std::numeric_limits<double>::max())
             : node(v), seq(s), gain(g) {}
 
-        void echo() const { printf("i:%3d g:%.2e t:%.1f\n", seq, gain, time); }
+        void echo() const { printf("i:%3d g:%.2e\n", seq, gain); }
     };
 
 private:
@@ -39,12 +39,10 @@ public:
         auto cmp = [](Elem& a, Elem& b) { return a.gain < b.gain; };
         std::priority_queue<Elem, std::vector<Elem>, decltype(cmp)> pq(cmp);
 
-        for (int node : input_ptr_->getNodesAll()) pq.emplace(node);
+        for (int node : input_ptr_->getNodes()) pq.emplace(node);
 
         std::vector<int> chosen;
         chosen.reserve(budget_);
-
-        osutils::Timer tm;
 
         double rwd = 0;
         int seq = 1;
@@ -52,7 +50,6 @@ public:
             Elem e = pq.top();
             pq.pop();
             if (e.seq == seq) {
-                e.time = tm.seconds();
                 chosen.push_back(e.node);
                 seq++;
                 rwd += e.gain;
@@ -64,6 +61,8 @@ public:
         }
         return rwd;
     }
+
+    int getOracleCalls() const { return input_ptr_->getOracleCalls(); }
 
 }; /* GreedyAlg */
 

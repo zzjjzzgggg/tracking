@@ -12,9 +12,9 @@ int main(int argc, char* argv[]) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
     osutils::Timer tm;
 
-    // std::string gfn =
-    // "/dat/workspace/dat/cit-HepTh_wcc_digraph_mapped.gz";
-    std::string gfn = "/home/jzzhao/workspace/streaming/test_graph.txt";
+    std::string gfn =
+    "/dat/workspace/dat/cit-HepTh_wcc_digraph_mapped.gz";
+    // std::string gfn = "/home/jzzhao/workspace/streaming/test_graph.txt";
 
     dir::DGraph graph = loadEdgeList<dir::DGraph>(gfn);
     DirBFS<dir::DGraph> bfs(graph);
@@ -22,10 +22,10 @@ int main(int argc, char* argv[]) {
     auto edges = ioutils::loadPrVec<int, int>(gfn);
 
     DynDGraphMgr mgr(12);
-    for (auto& e : edges) mgr.addEdge(e.first, e.second);
+    mgr.addEdges(edges);
     printf("edge added\n");
 
-    mgr.updateDAG();
+    mgr.getAffectedNodes();
 
     printf("nd\ttruth\ttm\test\ttm\terr(%%)\n");
     for (auto ni = graph.beginNI(); ni != graph.endNI(); ni++) {
@@ -45,11 +45,12 @@ int main(int argc, char* argv[]) {
     }
 
     tm.tick();
+    mgr.clear();
     mgr.addEdge(1, 4);
     double t1 = tm.seconds();
 
     tm.tick();
-    auto vec = mgr.updateDAG();
+    auto vec = mgr.getAffectedNodes();
     double t2 = tm.seconds();
     printf("%.4f, %.4f, %lu\n", t1, t2, vec.size());
 

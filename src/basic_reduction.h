@@ -15,8 +15,7 @@ private:
     int L_, cur_;  // cur_ points to the instance with l = 1
 
 public:
-    BasicReduction(const int L, const int budget, const double eps = 0.1)
-        : L_(L) {
+    BasicReduction(const int L, const int budget, const double eps) : L_(L) {
         sieve_ptrs_.resize(L);
         for (int l = 0; l < L_; l++)
             sieve_ptrs_[l] = new SieveADN<InputMgr>(budget, eps);
@@ -30,10 +29,10 @@ public:
      * Edge with lifetime l will be fed to instances with l' <= l.
      * Alg. instances in range [cur_, cur_ + l - 1] will be updated.
      */
-    void addEdge(const int u, const int v, const int l) {
+    void feedEdge(const int u, const int v, const int l) {
         int i = cur_;
         for (int j = 0; j < l; j++) {
-            sieve_ptrs_[i]->addEdge(u, v);
+            sieve_ptrs_[i]->feedEdge(u, v);
             i = (i + 1) % L_;
         }
     }
@@ -68,9 +67,7 @@ public:
     /**
      * Provided to Greedy Alg.
      */
-    const InputMgr& getInputMgr() const {
-        return sieve_ptrs_[cur_]->getInputMgr();
-    }
+    InputMgr& getInputMgr() { return sieve_ptrs_[cur_]->getInputMgr(); }
 
 }; /* BasicReduction */
 

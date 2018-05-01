@@ -18,6 +18,7 @@
 #include <future>
 #include <thread>
 
+#include <adv/LRUCache.h>
 #include <os/osutils.h>
 #include <io/ioutils.h>
 #include <adv/rngutils.h>
@@ -27,3 +28,4 @@ using namespace fmt::literals;
 using namespace graph;
 
 typedef std::pair<int, int> IntPr;
+typedef std::vector<std::pair<int, int>> IntPrV;

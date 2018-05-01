@@ -23,22 +23,16 @@ public:
         edge_buf_[(cur_ + l - 1) % L_].emplace_back(u, v);
     }
 
-    void clear() {
+    void next() {
         edge_buf_[cur_].clear();
         cur_ = (cur_ + 1) % L_;
-    }
-
-    double eval(const std::vector<int>& nodes) {
         input_mgr_.clear(true);
-        for (auto& edges : edge_buf_)
-            if (!edges.empty()) input_mgr_.addEdges(edges);
-        return input_mgr_.getReward(nodes);
     }
 
     InputMgr& getInputMgr() {
-        input_mgr_.clear(true);
         for (auto& edges : edge_buf_)
             if (!edges.empty()) input_mgr_.addEdges(edges);
+        input_mgr_.getAffectedNodes();
         return input_mgr_;
     }
 

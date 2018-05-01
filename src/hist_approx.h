@@ -28,24 +28,16 @@ private:
         }
         virtual ~Alg() { delete sieve_ptr_; }
 
-        /**
-         * Copy constructor.
-         */
+        // Copy constructor.
         Alg(const Alg& o) : l_(o.l_), i_(o.i_), val_(o.val_) {
             sieve_ptr_ = new SieveADN<InputMgr>(*o.sieve_ptr_);
         }
 
-        void clear() { sieve_ptr_->clear(); }
-
-        inline void updateVal() {
+        inline void update() {
             sieve_ptr_->update();
             auto rst = sieve_ptr_->getResult();
             i_ = rst.first;
             val_ = rst.second;
-        }
-
-        inline void addEdges(const std::vector<IntPr>& edges) {
-            sieve_ptr_->addEdges(edges);
         }
 
     }; /* Alg */
@@ -53,11 +45,10 @@ private:
 private:
     int L_, budget_;
     double eps_;
+    int cur_ = 0, del_calls_ = 0;
 
-    std::list<Alg*> algs_;  // a list of alg instances
-
-    int cur_ = 0;
-    std::vector<std::vector<IntPr>> edge_buf_;
+    std::list<Alg*> algs_;  // a list of Alg instances
+    std::vector<IntPrV> edge_buf_;
 
 private:
     /**
@@ -71,6 +62,7 @@ public:
         : L_(L), budget_(budget), eps_(eps) {
         edge_buf_.resize(L);
     }
+
     virtual ~HistApprox() {
         for (auto it = algs_.begin(); it != algs_.end(); ++it) delete *it;
     }
@@ -78,7 +70,7 @@ public:
     /**
      * Store edges with lifetime l into buffer.
      */
-    void bufEdges(const std::vector<IntPr>& edges, const int l) {
+    void bufEdges(const IntPrV& edges, const int l) {
         auto& target = edge_buf_[(cur_ + l - 1) % L_];
         target.insert(target.end(), edges.begin(), edges.end());
     };
@@ -87,42 +79,7 @@ public:
      * Feed a batch of edges with lifetime l to instances with l' <= l.
      * Need to scan alg. instances in in the list from head to tail.
      */
-    void addEdges(const std::vector<IntPr>& edges, const int l) {
-        auto it = algs_.begin();
-        while (it != algs_.end() && (*it)->l_ <= l) {
-            (*it)->addEdges(edges);
-            (*it)->updateVal();
-            ++it;
-        }
-        // check whether or not need to create a new Alg instance
-        if (it == algs_.end()) {  // reach tail?
-            auto tail = algs_.rbegin();
-            // create a new Alg if the list is empty or its tail has smaller l
-            if (tail == algs_.rend() || (*tail)->l_ < l) {
-                Alg* alg = new Alg(l, budget_, eps_);
-                alg->addEdges(edges);
-                alg->updateVal();
-                algs_.insert(algs_.end(), alg);
-            }
-        } else {
-            auto ancestor = it;
-            // create an Alg based on its ancestor
-            if (ancestor == algs_.begin() || (*--it)->l_ < l) {
-                Alg* alg = new Alg(*(*ancestor));
-                alg->l_ = l;
-                // process new edges
-                alg->addEdges(edges);
-                // process history edges with lifetime in range [l, l^*)
-                for (int ll = l; ll < (*ancestor)->l_; ll++) {
-                    const auto& history = edge_buf_[(cur_ + ll - 1) % L_];
-                    if (!history.empty()) alg->addEdges(history);
-                }
-                alg->updateVal();
-                algs_.insert(ancestor, alg);
-            }
-        }
-        rmRedundancy();
-    }
+    void feedAndUpdate(const IntPrV& edges, const int l);
 
     std::pair<int, double> getResult() const {
         return std::make_pair(algs_.front()->i_, algs_.front()->val_);
@@ -132,18 +89,56 @@ public:
         return algs_.front()->sieve_ptr_->getSolution(i);
     }
 
-    std::string getInfo() const {
-        return fmt::format("{:5d}", algs_.size());
-    }
+    int statOracleCalls();
+    int getNumAlgs() const { return algs_.size(); }
+
     /**
      * Prepare for next time step. Deleta the head instance if its l=1, and
      * conduct light clean for other instances.
      */
-    void clear();
+    void next();
 
 }; /* HistApprox */
 
 // implementations
+template <class InputMgr>
+void HistApprox<InputMgr>::feedAndUpdate(const IntPrV& edges, const int l) {
+    auto it = algs_.begin();
+    while (it != algs_.end() && (*it)->l_ <= l) {
+        (*it)->sieve_ptr_->feedEdges(edges);
+        (*it)->update();
+        ++it;
+    }
+    // check whether or not need to create a new Alg instance
+    if (it == algs_.end()) {  // reach tail?
+        auto tail = algs_.rbegin();
+        // create a new Alg if the list is empty or its tail has smaller l
+        if (tail == algs_.rend() || (*tail)->l_ < l) {
+            Alg* alg = new Alg(l, budget_, eps_);
+            alg->sieve_ptr_->feedEdges(edges);
+            alg->update();
+            algs_.insert(algs_.end(), alg);
+        }
+    } else {
+        auto ancestor = it;
+        // create an Alg based on its ancestor
+        if (ancestor == algs_.begin() || (*--it)->l_ < l) {
+            Alg* alg = new Alg(*(*ancestor));
+            alg->l_ = l;
+            alg->sieve_ptr_->clear();
+            alg->sieve_ptr_->feedEdges(edges);
+            // process history edges with lifetime in range [l, l^*)
+            for (int ll = l; ll < (*ancestor)->l_; ll++) {
+                const auto& history = edge_buf_[(cur_ + ll - 1) % L_];
+                if (!history.empty()) alg->sieve_ptr_->feedEdges(history);
+            }
+            alg->update();
+            algs_.insert(ancestor, alg);
+        }
+    }
+    rmRedundancy();
+}
+
 template <class InputMgr>
 void HistApprox<InputMgr>::rmRedundancy() {
     auto start = algs_.begin();
@@ -157,7 +152,10 @@ void HistApprox<InputMgr>::rmRedundancy() {
         }
         if (start != last) {  // delete algs in range (start, last)
             it = start;
-            while (++it != last) delete *it;
+            while (++it != last) {
+                del_calls_ += (*it)->sieve_ptr_->getOracleCalls();
+                delete *it;
+            }
             algs_.erase(++start, last);
             start = last;
         } else
@@ -166,13 +164,25 @@ void HistApprox<InputMgr>::rmRedundancy() {
 }
 
 template <class InputMgr>
-void HistApprox<InputMgr>::clear() {
+int HistApprox<InputMgr>::statOracleCalls() {
+    int oracle_calls = 0;
+    for (auto it = algs_.begin(); it != algs_.end(); ++it)
+        oracle_calls += (*it)->sieve_ptr_->getOracleCalls();
+    del_calls_ = 0;
+    return oracle_calls;
+}
+
+template <class InputMgr>
+void HistApprox<InputMgr>::next() {
+    // If head SieveADN instance expires
     if (algs_.front()->l_ == 1) {
         delete algs_.front();
         algs_.pop_front();
     }
+
+    // clear remaining SieveADN instances
     for (auto it = algs_.begin(); it != algs_.end(); ++it) {
-        (*it)->clear();  // only clear temporal results
+        (*it)->sieve_ptr_->clear();
         (*it)->l_--;
     }
 

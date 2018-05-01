@@ -2,9 +2,13 @@
  * Copyright (C) by J.Z. (04/05/2018 19:28)
  * Distributed under terms of the MIT license.
  */
+#ifndef DGRAPH
 #include "dyn_bgraph_mgr.h"
-#include "sieve_adn.h"
+#else
+#include "dyn_dgraph_mgr.h"
+#endif
 
+#include "sieve_adn.h"
 #include <gflags/gflags.h>
 
 DEFINE_string(graph, "", "input bipartite graph (user, venue, ...)");
@@ -18,27 +22,32 @@ int main(int argc, char *argv[]) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
     osutils::Timer tm;
 
+#ifndef DGRAPH
     SieveADN<DynBGraphMgr> adn{FLAGS_budget, FLAGS_eps};
+#else
+    SieveADN<DynDGraphMgr> adn{FLAGS_budget, FLAGS_eps};
+#endif
 
-    std::vector<std::pair<int, int>> edges;
-    std::vector<std::pair<int, double>> tm_rwd;
+    std::vector<std::tuple<int, double, int>> rst;
 
-    int t = 0;
+    printf("\ttime\tvalue\tocalls\tn-th\taff-nd\n");
+
+    int t = 0, num = 0, n = 0, ocalls = 0;
     ioutils::TSVParser ss(FLAGS_graph);
     while (ss.next()) {
-        int u = ss.get<int>(0), v = ss.get<int>(1);
-        edges.emplace_back(u, v);
-        if (edges.size() == FLAGS_batch_sz) {
-            adn.addEdges(edges);
-            adn.update();
+        adn.feedEdge(ss.get<int>(0), ss.get<int>(1));
+        if (++num == FLAGS_batch_sz) {
+            n += adn.update();
+            ocalls += adn.getOracleCalls();
             double val = adn.getResult().second;
+            rst.emplace_back(++t, val, ocalls);
 
             adn.clear();
-            edges.clear();
+            num = 0;
 
-            printf("\t%d\t\t%.0f\r", ++t, val);
+            printf("\t%d\t%.0f\t%6d\t%3d\t%5d\r", t, val, ocalls,
+                   adn.getNumThresholds(), n);
             fflush(stdout);
-            tm_rwd.emplace_back(t, val);
         }
         if (t == FLAGS_end_tm) break;
     }
@@ -51,7 +60,7 @@ int main(int argc, char *argv[]) {
         "#graph: {}\n#budget: {}\n#batch size: {}\n#end time: {}\n#epsilon: "
         "{:.2f}\n",
         FLAGS_graph, FLAGS_budget, FLAGS_batch_sz, FLAGS_end_tm, FLAGS_eps);
-    ioutils::savePrVec(tm_rwd, ofnm, true, "{:d}\t{:.1f}\n", ano);
+    ioutils::saveTupleVec(rst, ofnm, true, "{}\t{:.1f}\t{}\n", ano);
 
     printf("cost time %s\n", tm.getStr().c_str());
     gflags::ShutDownCommandLineFlags();

@@ -18,7 +18,6 @@ private:
 
     std::vector<std::unordered_set<int>> S_buf_;
     std::map<int, int> thi_pos_;  // theta_index --> set_position
-
     std::stack<int> recycle_bin_;
 
 private:
@@ -37,6 +36,7 @@ private:
     inline std::unordered_set<int>& getS(const int i) {
         return S_buf_[thi_pos_.at(i)];
     }
+
     inline const std::unordered_set<int>& getS(const int i) const {
         return S_buf_[thi_pos_.at(i)];
     }
@@ -76,36 +76,26 @@ public:
         return *this;
     }
 
-    /**
-     * Add one edge
-     */
-    void addEdge(const int u, const int v) { input_mgr_.addEdge(u, v); }
+    void feedEdge(const int u, const int v) { input_mgr_.addEdge(u, v); }
+    void feedEdges(const IntPrV& edges) { input_mgr_.addEdges(edges); }
 
-    /**
-     * Add a batch of edges
-     */
-    void addEdges(const std::vector<std::pair<int, int>>& edges) {
-        input_mgr_.addEdges(edges);
-    }
-    /**
-     * Process a nodes whose gain changes.
-     */
-    void update();
+    // update and return num of affected nodes
+    int update();
+    int getOracleCalls() const { return input_mgr_.getOracleCalls(); }
 
     /**
      * Get current maximum reward
      */
     std::pair<int, double> getResult() const;
 
-    /**
-     * Get solution
-     */
     std::vector<int> getSolution(const int i) const {
         const auto& S = getS(i);
         return std::vector<int>(S.begin(), S.end());
     }
 
-    const InputMgr& getInputMgr() const { return input_mgr_; }
+    InputMgr& getInputMgr() { return input_mgr_; }
+
+    int getNumThresholds() const { return thi_pos_.size(); }
 
     /**
      * If deep = true, then clean everything, including input_mgr_ and maintaned
@@ -171,9 +161,9 @@ void SieveADN<InputMgr>::updateThresholds() {
 }
 
 template <class InputMgr>
-void SieveADN<InputMgr>::update() {
+int SieveADN<InputMgr>::update() {
     auto nodes = input_mgr_.getAffectedNodes();
-    if (nodes.empty()) return;
+    if (nodes.empty()) return 0;
 
     // update maximum gain and thresholds
     if (updateMaxGain(nodes)) updateThresholds();
@@ -190,6 +180,7 @@ void SieveADN<InputMgr>::update() {
             }
         }
     }
+    return nodes.size();
 }
 
 template <class InputMgr>

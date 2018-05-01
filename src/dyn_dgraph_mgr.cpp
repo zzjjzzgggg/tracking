@@ -2,8 +2,13 @@
  * Copyright (C) by J.Z. (04/03/2018 14:43)
  * Distributed under terms of the MIT license.
  */
-
 #include "dyn_dgraph_mgr.h"
+
+std::vector<int> DynDGraphMgr::getNodes() const {
+    std::vector<int> nodes;
+    for (auto& pr : nd_cc_) nodes.push_back(pr.first);
+    return nodes;
+}
 
 int DynDGraphMgr::getCC(const int u) {
     if (nd_cc_.find(u) != nd_cc_.end())
@@ -32,7 +37,8 @@ int DynDGraphMgr::getPos(const int cc) {
     return pos;
 }
 
-void DynDGraphMgr::freePos(const int pos) {
+void DynDGraphMgr::deleteCC(const int cc) {
+    int pos = cc_bitpos_.at(cc);
     // clean range [start, end)
     auto start = bits_.begin();
     std::advance(start, pos);
@@ -41,11 +47,11 @@ void DynDGraphMgr::freePos(const int pos) {
     std::fill(start, end, 0);
     // recycling
     recycle_bin_.push(pos);
-    cc_bitpos_.erase(pos);
+    cc_bitpos_.erase(cc);
 }
 
 void DynDGraphMgr::reverseFanOut(const dir::DGraph& G, const int cv,
-                                std::unordered_set<int>& modified) {
+                                 std::unordered_set<int>& modified) {
     if (!G.isNode(cv)) return;
     const auto& nd = G[cv];
     for (auto ni = nd.beginInNbr(); ni != nd.endInNbr(); ni++) {
@@ -58,92 +64,121 @@ void DynDGraphMgr::reverseFanOut(const dir::DGraph& G, const int cv,
 void DynDGraphMgr::addEdge(const int u, const int v) {
     int cu = getCC(u), cv = getCC(v);
     // omit self-loop edges and edges already in DAG
-    if (cu != cv && !DAG_.isEdge(cu, cv)) {
-        DAG_.addEdge(cu, cv);
+    if (cu != cv && !dag_.isEdge(cu, cv)) {
+        dag_.addEdge(cu, cv);
         new_cc_edges_.emplace_back(cu, cv);
     }
 }
 
-void DynDGraphMgr::addEdges(const std::vector<std::pair<int, int>>& edges) {
-    new_cc_edges_.clear();
-    for (auto& edge : edges) addEdge(edge.first, edge.second);
-}
-
-std::vector<int> DynDGraphMgr::updateDAG() {
-    SCCVisitor<dir::DGraph> dfs(DAG_);
+std::vector<int> DynDGraphMgr::getAffectedNodes() {
+    if (new_cc_edges_.empty()) return std::vector<int>();
+    SCCVisitor<dir::DGraph> dfs(dag_);
     dfs.performDFS();
 
     // CCs in topological order
-    auto cc_new_vec = dfs.getCCSorted();
+    auto new_ccs = dfs.getCCSorted();
 
     // CC connections
-    auto cc_edges_vec = dfs.getCCEdges();
+    auto cc_edges = dfs.getCCEdges();
 
     // re-arrange current CCs
-    std::unordered_map<int, int> co_cn;  // old-CC -> new-CC mapping
-    std::vector<std::vector<int>> cc_cc;
+    std::unordered_map<int, int> co_cn;   // old-CC -> new-CC mapping
+    std::vector<std::vector<int>> cc_cc;  // {<new_cc, old_cc1, old_cc2, ...>}
     int cc = -1;
     for (auto& pr : dfs.getCNEdges()) {
-        int ccn = pr.first, cco = pr.second;
-        co_cn[cco] = ccn;
-        if (cc != ccn) {
-            cc = ccn;
-            cc_cc.push_back({ccn});
+        int cn = pr.first, co = pr.second;
+        co_cn[co] = cn;
+        if (cc != cn) {
+            cc = cn;
+            cc_cc.push_back({cn});
         }
-        if (cco != ccn) cc_cc.back().push_back(cco);
+        if (co != cn) cc_cc.back().push_back(co);
     }
 
     // generate or merge bits in each CC
     std::unordered_set<int> modified;  // record possibly modified CCs
     for (auto& ccs : cc_cc) {
-        int pos0 = getPos(ccs[0]);
+        int c0 = ccs[0];
         // if the CC is newly created, then generate bits for it
-        if (cc_.find(ccs[0]) == cc_.end()) {
-            genHLLCounter(pos0);
-            modified.insert(ccs[0]);
+        if (cc_bitpos_.find(c0) == cc_bitpos_.end()) {
+            genHLLCounter(getPos(c0));
+            modified.insert(c0);
         }
         for (int i = 1; i < ccs.size(); i++) {
-            int pos1 = getPos(ccs[i]);
-            if (cc_.find(ccs[i]) == cc_.end()) genHLLCounter(pos1);
-            mergeCounter(pos0, pos1);
-            modified.insert(ccs[0]);
-            freePos(pos1);
+            int ci = ccs[i];
+            if (cc_bitpos_.find(ci) == cc_bitpos_.end())
+                genHLLCounter(getPos(ci));
+            int pos = getPos(ci);
+            mergeCounter(getPos(c0), pos);
+            modified.insert(c0);
+            deleteCC(ci);
         }
     }
 
     // also need to check new edges between two CCs
-    dir::DGraph sub_DAG;
+    dir::DGraph sub_dag;
     for (auto& edge : new_cc_edges_) {
         int ci = co_cn.at(edge.first), cj = co_cn.at(edge.second);
-        if (ci != cj || modified.find(cj) == modified.end())
-            sub_DAG.addEdge(ci, cj);
+        if (ci != cj && modified.find(cj) == modified.end() &&
+            !sub_dag.isEdge(ci, cj))
+            sub_dag.addEdge(ci, cj);
     }
+    new_cc_edges_.clear();
 
     // update DAG
-    DAG_.clear();
-    for (auto& pr : cc_edges_vec) DAG_.addEdge(pr.first, pr.second);
+    dag_.clear();
+    for (auto& pr : cc_edges) dag_.addEdge(pr.first, pr.second);
 
     // update CC bits in topological order
-    for (auto it = cc_new_vec.rbegin(); it != cc_new_vec.rend(); it++) {
+    for (auto it = new_ccs.rbegin(); it != new_ccs.rend(); it++) {
         int cj = *it;
         if (modified.find(cj) != modified.end()) {  // if cj is modified
-            reverseFanOut(DAG_, cj, modified);      // then do reverse fan-out
+            reverseFanOut(dag_, cj, modified);      // then do reverse fan-out
         } else {  // if an old CC has new in-coming edges
-            reverseFanOut(sub_DAG, cj, modified);
+            reverseFanOut(sub_dag, cj, modified);
         }
     }
 
-    // update CCs
-    cc_.clear();
-    cc_.insert(cc_new_vec.begin(), cc_new_vec.end());
-
     // update node-cc mapping
+    // TODO: improve efficiency
     std::vector<int> affected_nodes;
     for (auto& pr : nd_cc_) {
         int nd = pr.first, &cc = pr.second;
-        cc = co_cn.at(cc);
-        if (modified.find(cc) != modified.end()) affected_nodes.push_back(nd);
+        // NOTE: If a CC is singleton in previous step, then after updating the
+        // DAG in Line 130, this CC will disappear in current step.
+        if (co_cn.find(cc) != co_cn.end()) {
+            cc = co_cn.at(cc);
+            if (modified.find(cc) != modified.end())
+                affected_nodes.push_back(nd);
+        }
     }
 
+    // printf("affected nodes: %lu\n", affected_nodes.size());
+
     return affected_nodes;
+}
+
+void DynDGraphMgr::clear(const bool deep) {
+    new_cc_edges_.clear();
+    InputMgr::clear(deep);
+    if (deep) {
+        HyperANF::clear();
+        dag_.clear();
+        while (!recycle_bin_.empty()) recycle_bin_.pop();
+    }
+}
+
+double DynDGraphMgr::getReward(const int node) const { return estimate(node); }
+double DynDGraphMgr::getReward(const std::vector<int>& S) const {
+    return estimate(S.begin(), S.end());
+}
+double DynDGraphMgr::getReward(const std::unordered_set<int>& S) const {
+    return estimate(S.begin(), S.end());
+}
+double DynDGraphMgr::getGain(const int u, const std::vector<int>& S) const {
+    return getGain(u, S.begin(), S.end());
+}
+double DynDGraphMgr::getGain(const int u,
+                             const std::unordered_set<int>& S) const {
+    return getGain(u, S.begin(), S.end());
 }

@@ -12,6 +12,7 @@ DEFINE_string(nodes, "", "nodes");
 DEFINE_int32(end_tm, 100, "end time");
 DEFINE_int32(L, 10, "maximum lifetime");
 
+// TODO: incorrect
 int main(int argc, char* argv[]) {
     gflags::SetUsageMessage("usage:");
     gflags::ParseCommandLineFlags(&argc, &argv, true);

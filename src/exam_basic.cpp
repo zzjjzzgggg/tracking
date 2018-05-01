@@ -2,12 +2,17 @@
  * Copyright (C) by J.Z. (04/05/2018 19:28)
  * Distributed under terms of the MIT license.
  */
+#ifndef DGRAPH
 #include "dyn_bgraph_mgr.h"
+#else
+#include "dyn_dgraph_mgr.h"
+#endif
+
 #include "basic_reduction.h"
 
 #include <gflags/gflags.h>
 
-DEFINE_string(graph, "", "input bipartite graph (user, venue, ...)");
+DEFINE_string(graph, "", "input graph");
 DEFINE_int32(budget, 50, "budget");
 DEFINE_int32(end_tm, 100, "end time");
 DEFINE_int32(batch_sz, 10, "batch size");
@@ -19,7 +24,11 @@ int main(int argc, char *argv[]) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
     osutils::Timer tm;
 
+#ifndef DGRAPH
     BasicReduction<DynBGraphMgr> basic(FLAGS_L, FLAGS_budget, FLAGS_eps);
+#else
+    BasicReduction<DynDGraphMgr> basic(FLAGS_L, FLAGS_budget, FLAGS_eps);
+#endif
 
     std::vector<std::pair<int, double>> tm_val;
 
