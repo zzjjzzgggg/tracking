@@ -33,8 +33,8 @@ private:
             sieve_ptr_ = new SieveADN<InputMgr>(*o.sieve_ptr_);
         }
 
-        inline void update() {
-            sieve_ptr_->update();
+        inline void update(const bool check = true) {
+            sieve_ptr_->update(check);
             auto rst = sieve_ptr_->getResult();
             i_ = rst.first;
             val_ = rst.second;
@@ -45,7 +45,7 @@ private:
 private:
     int L_, budget_;
     double eps_;
-    int cur_ = 0, del_calls_ = 0;
+    int cur_ = 0;
 
     std::list<Alg*> algs_;  // a list of Alg instances
     std::vector<IntPrV> edge_buf_;
@@ -132,7 +132,7 @@ void HistApprox<InputMgr>::feedAndUpdate(const IntPrV& edges, const int l) {
                 const auto& history = edge_buf_[(cur_ + ll - 1) % L_];
                 if (!history.empty()) alg->sieve_ptr_->feedEdges(history);
             }
-            alg->update();
+            alg->update(false);
             algs_.insert(ancestor, alg);
         }
     }
@@ -152,10 +152,7 @@ void HistApprox<InputMgr>::rmRedundancy() {
         }
         if (start != last) {  // delete algs in range (start, last)
             it = start;
-            while (++it != last) {
-                del_calls_ += (*it)->sieve_ptr_->getOracleCalls();
-                delete *it;
-            }
+            while (++it != last) delete *it;
             algs_.erase(++start, last);
             start = last;
         } else
@@ -168,7 +165,6 @@ int HistApprox<InputMgr>::statOracleCalls() {
     int oracle_calls = 0;
     for (auto it = algs_.begin(); it != algs_.end(); ++it)
         oracle_calls += (*it)->sieve_ptr_->getOracleCalls();
-    del_calls_ = 0;
     return oracle_calls;
 }
 

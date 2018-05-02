@@ -80,7 +80,7 @@ public:
     void feedEdges(const IntPrV& edges) { input_mgr_.addEdges(edges); }
 
     // update and return num of affected nodes
-    int update();
+    int update(const bool check = true);
     int getOracleCalls() const { return input_mgr_.getOracleCalls(); }
 
     /**
@@ -161,7 +161,7 @@ void SieveADN<InputMgr>::updateThresholds() {
 }
 
 template <class InputMgr>
-int SieveADN<InputMgr>::update() {
+int SieveADN<InputMgr>::update(const bool check) {
     auto nodes = input_mgr_.getAffectedNodes();
     if (nodes.empty()) return 0;
 
@@ -175,7 +175,7 @@ int SieveADN<InputMgr>::update() {
             auto& S = getS(i);
             if (S.find(u) == S.end() && S.size() < budget_) {
                 double threshold = getThreshold(i),
-                       gain = input_mgr_.getGain(u, S);
+                       gain = input_mgr_.getGain(u, S, check);
                 if (gain >= threshold) S.insert(u);
             }
         }

@@ -30,8 +30,8 @@ private:
                        std::unordered_set<int>& modified);
 
     template <class InputIter>
-    double getGain(const int u, const InputIter first,
-                   const InputIter last) const;
+    double getGain(const int u, const InputIter first, const InputIter last,
+                   const bool check = true) const;
 
 public:
     DynDGraphMgr(const int p = 10) : HyperANF(p), InputMgr() {}
@@ -64,20 +64,22 @@ public:
     double getReward(const int node) const override;
     double getReward(const std::vector<int>& S) const override;
     double getReward(const std::unordered_set<int>& S) const override;
-    double getGain(const int, const std::vector<int>&) const override;
-    double getGain(const int, const std::unordered_set<int>&) const override;
+    double getGain(const int u, const std::vector<int>& S,
+                   const bool check = true) const override;
+    double getGain(const int u, const std::unordered_set<int>& S,
+                   const bool check = true) const override;
 
 }; /* DynDGraphMgr */
 
 // implementations
 template <class InputIter>
 double DynDGraphMgr::getGain(const int u, const InputIter first,
-                             const InputIter last) const {
+                             const InputIter last, const bool check) const {
     std::string key = "{}"_format(u);
     for (auto it = first; it != last; ++it) key.append("|{}"_format(*it));
     if (cache_.contains(key)) return cache_.get(key);
 
-    ++oracle_calls_;
+    if (check) ++oracle_calls_;
     double gain = 0;
     if (first == last)
         gain = getReward(u);

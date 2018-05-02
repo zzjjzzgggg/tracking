@@ -59,9 +59,10 @@ public:
     virtual double getReward(const int) const = 0;
     virtual double getReward(const std::vector<int>&) const = 0;
     virtual double getReward(const std::unordered_set<int>&) const = 0;
-    virtual double getGain(const int, const std::vector<int>&) const = 0;
-    virtual double getGain(const int, const std::unordered_set<int>&) const = 0;
-
+    virtual double getGain(const int, const std::vector<int>&,
+                           const bool) const = 0;
+    virtual double getGain(const int, const std::unordered_set<int>&,
+                           const bool) const = 0;
 
 }; /* InputMgr */
 

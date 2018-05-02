@@ -20,8 +20,8 @@ private:
 
 private:
     template <class InputIter>
-    double getGain(const int v, const InputIter first,
-                   const InputIter last) const;
+    double getGain(const int v, const InputIter first, const InputIter last,
+                   const bool check = true) const;
 
     template <class InputIter>
     double getReward(const InputIter first, const InputIter last) const;
@@ -73,24 +73,25 @@ public:
         return getReward(S.begin(), S.end());
     }
 
-    double getGain(const int u, const std::vector<int>& S) const override {
-        return getGain(u, S.begin(), S.end());
+    double getGain(const int u, const std::vector<int>& S,
+                   const bool check = true) const override {
+        return getGain(u, S.begin(), S.end(), check);
     }
-    double getGain(const int u,
-                   const std::unordered_set<int>& S) const override {
-        return getGain(u, S.begin(), S.end());
+    double getGain(const int u, const std::unordered_set<int>& S,
+                   const bool check = true) const override {
+        return getGain(u, S.begin(), S.end(), check);
     }
 
 }; /* DynBGraphMgr */
 
 template <class InputIter>
 double DynBGraphMgr::getGain(const int v, const InputIter first,
-                             const InputIter last) const {
+                             const InputIter last, const bool check) const {
     std::string key = "{}"_format(v);
     for (auto it = first; it != last; ++it) key.append("|{}"_format(*it));
     if (cache_.contains(key)) return cache_.get(key);
 
-    oracle_calls_++;
+    if (check) oracle_calls_++;
 
     double gain = 0;
     if (first == last)
