@@ -15,7 +15,7 @@
 DEFINE_string(graph, "", "input graph");
 DEFINE_int32(budget, 10, "budget");
 DEFINE_int32(end_tm, 100, "end time");
-DEFINE_int32(batch_sz, 10, "batch size");
+DEFINE_int32(batch_sz, 1, "batch size");
 DEFINE_int32(L, 10, "maximum lifetime");
 DEFINE_double(eps, 0.2, "epsilon");
 DEFINE_bool(save, true, "save results or not");
@@ -32,7 +32,7 @@ int main(int argc, char* argv[]) {
 #endif
 
     std::vector<std::tuple<int, double, int>> rst;
-    std::unordered_map<int, std::vector<IntPr>> edge_batch;
+    std::map<int, std::vector<IntPr>, std::greater<int>> edge_batch;
 
     printf("\ttime\tval\tocals\tn_algs\n");
     int t = 0, num = 0, ocalls = 0;
@@ -41,12 +41,12 @@ int main(int argc, char* argv[]) {
         int u = ss.get<int>(0), v = ss.get<int>(1), l = ss.get<int>(2);
         edge_batch[l].emplace_back(u, v);
         if (++num == FLAGS_batch_sz) {
-            for (auto& pr : edge_batch) hist.feedAndUpdate(pr.second, pr.first);
+            for (auto& pr : edge_batch) hist.feedAndUpdate(pr.first, pr.second);
 
-            double val = hist.getResult().second;
             for (auto& pr : edge_batch)
-                if (pr.first > 1) hist.bufEdges(pr.second, pr.first);
+                if (pr.first > 1) hist.bufEdges(pr.first, pr.second);
 
+            double val = hist.getResult();
             ocalls += hist.statOracleCalls();
             rst.emplace_back(++t, val, ocalls);
 

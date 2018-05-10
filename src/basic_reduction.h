@@ -11,13 +11,14 @@
 template <class InputMgr>
 class BasicReduction {
 private:
+    int L_, cur_ = 0;  // cur_ points to the instance with l = 1
+
     std::vector<SieveADN<InputMgr>*> sieve_ptrs_;
-    int L_, cur_;  // cur_ points to the instance with l = 1
 
 public:
     BasicReduction(const int L, const int budget, const double eps) : L_(L) {
         sieve_ptrs_.resize(L);
-        for (int l = 0; l < L_; l++)
+        for (int l = 0; l < L_; ++l)
             sieve_ptrs_[l] = new SieveADN<InputMgr>(budget, eps);
     }
 
@@ -58,10 +59,17 @@ public:
      * Conduct deep clean for the InputMgr pointed by cur_, light clean for
      * other InputMgr.
      */
-    void clear() {
+    void next() {
         sieve_ptrs_[cur_]->clear(true);
         for (int i = 0; i < L_; ++i) sieve_ptrs_[i]->clear();
         cur_ = (cur_ + 1) % L_;
+    }
+
+    int statOracleCalls() {
+        int oracle_calls = 0;
+        for (int i = 0; i < L_; ++i)
+            oracle_calls += sieve_ptrs_[i]->getOracleCalls();
+        return oracle_calls;
     }
 
     /**

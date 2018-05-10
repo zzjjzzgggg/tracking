@@ -14,7 +14,7 @@
 DEFINE_string(graph, "", "input bipartite graph (user, venue, ...)");
 DEFINE_int32(budget, 10, "budget");
 DEFINE_int32(end_tm, 100, "end time");
-DEFINE_int32(batch_sz, 10, "batch size");
+DEFINE_int32(batch_sz, 1, "batch size");
 DEFINE_double(eps, 0.2, "epsilon");
 
 int main(int argc, char *argv[]) {

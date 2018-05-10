@@ -1,20 +1,12 @@
 add_library(dyn_dgraph_mgr dyn_dgraph_mgr.cpp)
 target_link_libraries(dyn_dgraph_mgr ${LIBRARIES})
 
-add_library(dyn_graph_mgr dyn_graph_mgr.cpp)
-target_link_libraries(dyn_graph_mgr ${LIBRARIES})
-
-
 # test
 add_executable(test-me test.cpp)
 #target_link_libraries(test-me greedy_manager)
 
 add_executable(test_dyn_dgraph_mgr test_dyn_dgraph_mgr.cpp)
 target_link_libraries(test_dyn_dgraph_mgr dyn_dgraph_mgr)
-
-add_executable(test_dyn_graph_mgr test_dyn_graph_mgr.cpp)
-target_link_libraries(test_dyn_graph_mgr dyn_graph_mgr)
-
 
 # experiments
 ## SieveADN
@@ -77,5 +69,5 @@ target_link_libraries(exam_random_dg dyn_dgraph_mgr)
 target_compile_definitions(exam_random_dg PRIVATE DGRAPH=1)
 
 
-add_executable(exam_greedy_eval exam_greedy_eval.cpp)
-target_link_libraries(exam_greedy_eval dyn_graph_mgr)
+# add_executable(exam_greedy_eval exam_greedy_eval.cpp)
+# target_link_libraries(exam_greedy_eval dyn_graph_mgr)

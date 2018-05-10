@@ -15,9 +15,10 @@
 DEFINE_string(graph, "", "input graph");
 DEFINE_int32(budget, 50, "budget");
 DEFINE_int32(end_tm, 100, "end time");
-DEFINE_int32(batch_sz, 10, "batch size");
+DEFINE_int32(batch_sz, 1, "batch size");
 DEFINE_int32(L, 10, "maximum lifetime");
 DEFINE_double(eps, 0.2, "epsilon");
+DEFINE_bool(save, true, "save results or not");
 
 int main(int argc, char *argv[]) {
     gflags::SetUsageMessage("usage:");
@@ -30,40 +31,40 @@ int main(int argc, char *argv[]) {
     BasicReduction<DynDGraphMgr> basic(FLAGS_L, FLAGS_budget, FLAGS_eps);
 #endif
 
-    std::vector<std::pair<int, double>> tm_val;
+    std::vector<std::tuple<int, double, int>> rst;
 
-    std::vector<int> S;
-    int t = 0, num = 0;
+    printf("\ttime\tval\tocals\n");
+    int t = 0, num = 0, calls = 0;
     ioutils::TSVParser ss(FLAGS_graph);
     while (ss.next()) {
         int u = ss.get<int>(0), v = ss.get<int>(1), l = ss.get<int>(2);
-        basic.addEdge(u, v, l);
-        ++num;
-        if (num == FLAGS_batch_sz) {
+        basic.feedEdge(u, v, l);
+        if (++num == FLAGS_batch_sz) {
             basic.update();
-            auto rst = basic.getResult();
-            double val = rst.second;
-            S = basic.getSolution(rst.first);
-            basic.clear();
+            calls += basic.statOracleCalls();
+            double val = basic.getResult().second;
+
+            basic.next();
             num = 0;
 
-            printf("\t%d\t\t%.0f\r", ++t, val);
+            rst.emplace_back(++t, val, calls);
+
+            printf("\t%5d\t%5.0f\t%6d\r", t, val, calls);
             fflush(stdout);
-            tm_val.emplace_back(t, val);
         }
         if (t == FLAGS_end_tm) break;
     }
     printf("\n");
 
-    ioutils::saveVec(S, "S_basic.dat");
     // save results
-    std::string ofnm = strutils::insertMiddle(
-        FLAGS_graph, "basic_k{}e{:g}"_format(FLAGS_budget, FLAGS_eps), "dat");
-    std::string ano = fmt::format(
-        "#graph: {}\n#budget: {}\n#batch size: {}\n#end time: {}\n#epsilon: "
-        "{:.2f}\n",
-        FLAGS_graph, FLAGS_budget, FLAGS_batch_sz, FLAGS_end_tm, FLAGS_eps);
-    ioutils::savePrVec(tm_val, ofnm, true, "{:d}\t{:.1f}\n", ano);
+    if (FLAGS_save) {
+        std::string ofnm = strutils::insertMiddle(
+            FLAGS_graph,
+            "basic_K{}T{}e{:g}"_format(
+                FLAGS_budget, strutils::prettyNumber(FLAGS_end_tm), FLAGS_eps),
+            "dat");
+        ioutils::saveTripletVec(rst, ofnm, true, "{}\t{:.2f}\t{}\n");
+    }
 
     printf("cost time %s\n", tm.getStr().c_str());
     gflags::ShutDownCommandLineFlags();

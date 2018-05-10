@@ -17,7 +17,7 @@
 DEFINE_string(graph, "", "input graph");
 DEFINE_int32(budget, 10, "budget");
 DEFINE_int32(end_tm, 100, "end time");
-DEFINE_int32(batch_sz, 10, "batch size");
+DEFINE_int32(batch_sz, 1, "batch size");
 DEFINE_int32(L, 10, "maximum lifetime");
 DEFINE_bool(save, true, "save results or not");
 

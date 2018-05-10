@@ -12,7 +12,7 @@
 DEFINE_string(graph, "", "input bipartite graph (user, venue, ...)");
 DEFINE_int32(budget, 50, "budget");
 DEFINE_int32(end_tm, 100, "end time");
-DEFINE_int32(batch_sz, 10, "batch size");
+DEFINE_int32(batch_sz, 1, "batch size");
 DEFINE_int32(L, 10, "maximum lifetime");
 
 int main(int argc, char *argv[]) {
@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
             GreedyAlg greedy(&input_mgr, FLAGS_budget);
             double val = greedy.run();
 
-            eval.clear();
+            eval.next();
             num = 0;
 
             printf("\t%d\t\t%.0f\r", ++t, val);

@@ -175,11 +175,10 @@ double DynDGraphMgr::getReward(const std::vector<int>& S) const {
 double DynDGraphMgr::getReward(const std::unordered_set<int>& S) const {
     return estimate(S.begin(), S.end());
 }
-double DynDGraphMgr::getGain(const int u, const std::vector<int>& S,
-                             const bool check) const {
-    return getGain(u, S.begin(), S.end(), check);
+double DynDGraphMgr::getGain(const int u, const std::vector<int>& S) const {
+    return getGain(u, S.begin(), S.end());
 }
-double DynDGraphMgr::getGain(const int u, const std::unordered_set<int>& S,
-                             const bool check) const {
-    return getGain(u, S.begin(), S.end(), check);
+double DynDGraphMgr::getGain(const int u,
+                             const std::unordered_set<int>& S) const {
+    return getGain(u, S.begin(), S.end());
 }
