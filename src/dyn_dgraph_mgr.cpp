@@ -118,6 +118,7 @@ std::vector<int> DynDGraphMgr::getAffectedNodes() {
 
     // update DAG
     dag_.clear();
+    dag_.addNodes(new_ccs);
     for (auto& pr : cc_edges) dag_.addEdge(pr.first, pr.second);
 
     // update CC bits in topological order
@@ -137,13 +138,9 @@ std::vector<int> DynDGraphMgr::getAffectedNodes() {
     for (auto& pr : nd_cc_) {
         // use ref: because we will update cc of nd later
         int nd = pr.first, &cc = pr.second;
-        // cc may not in current DAG (thus not in co_cn) if cc is singleton
-        // previously.
-        if (co_cn.find(cc) != co_cn.end()) {
-            cc = co_cn.at(cc);
-            if (modified.find(cc) != modified.end()) {
-                affected_nodes.push_back(nd);
-            }
+        cc = co_cn.at(cc);
+        if (modified.find(cc) != modified.end()) {
+            affected_nodes.push_back(nd);
         }
     }
     return affected_nodes;
