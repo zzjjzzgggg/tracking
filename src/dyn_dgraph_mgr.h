@@ -26,6 +26,8 @@ private:
     // delete CC and mark its pos in bits_ as an available possition
     void deleteCC(const int cc);
 
+    // do a BFS from node cv along its in-edges, each node in the BFS tree is
+    // inserted into set modified.
     void reverseFanOut(const dir::DGraph& G, const int cv,
                        std::unordered_set<int>& modified);
 
@@ -34,7 +36,7 @@ private:
                    const InputIter last) const;
 
 public:
-    DynDGraphMgr(const int p = 10) : HyperANF(p), InputMgr() {}
+    DynDGraphMgr(const int p = 8) : HyperANF(p), InputMgr() {}
 
     // copy constructor
     DynDGraphMgr(const DynDGraphMgr& o)
@@ -59,14 +61,26 @@ public:
     std::vector<int> getAffectedNodes() override;
 
     void clear(const bool deep = false) override;
-    std::vector<int> getNodes() const override;
+    std::vector<int> getNodes() const override {
+        std::vector<int> nodes;
+        for (auto& pr : nd_cc_) nodes.push_back(pr.first);
+        return nodes;
+    }
     int getNumNodes() const override { return nd_cc_.size(); }
-    double getReward(const int node) const override;
-    double getReward(const std::vector<int>& S) const override;
-    double getReward(const std::unordered_set<int>& S) const override;
-    double getGain(const int u, const std::vector<int>& S) const override;
+    double getReward(const int node) const override { return estimate(node); }
+    double getReward(const std::vector<int>& S) const override {
+        return estimate(S.begin(), S.end());
+    }
+    double getReward(const std::unordered_set<int>& S) const override {
+        return estimate(S.begin(), S.end());
+    }
+    double getGain(const int u, const std::vector<int>& S) const override {
+        return getGain(u, S.begin(), S.end());
+    }
     double getGain(const int u,
-                   const std::unordered_set<int>& S) const override;
+                   const std::unordered_set<int>& S) const override {
+        return getGain(u, S.begin(), S.end());
+    }
 
 }; /* DynDGraphMgr */
 

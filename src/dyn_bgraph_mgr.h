@@ -40,10 +40,8 @@ public:
     }
 
     void addEdge(const int u, const int v) override {
-        if (!graph_.isEdge(u, v)) {
-            graph_.addEdge(u, v);
-            affected_nodes_.insert(v);
-        }
+        graph_.addEdge(u, v);
+        affected_nodes_.insert(v);
     }
 
     void clear(const bool deep = false) override {

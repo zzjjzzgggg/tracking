@@ -140,7 +140,7 @@ void HistApprox<InputMgr>::feedAndUpdate(const int l, const IntPrV& edges) {
             algs_.insert(succ, alg);
         }
     }
-    // rmRedundancy();
+    rmRedundancy();
 }
 
 template <class InputMgr>

@@ -71,3 +71,13 @@ target_compile_definitions(exam_random_dg PRIVATE DGRAPH=1)
 
 # add_executable(exam_greedy_eval exam_greedy_eval.cpp)
 # target_link_libraries(exam_greedy_eval dyn_graph_mgr)
+
+
+
+### bipartite graph
+add_executable(exam_input_mgr_bg exam_input_mgr.cpp)
+target_link_libraries(exam_input_mgr_bg ${LIBRARIES})
+### general graph
+add_executable(exam_input_mgr_dg exam_input_mgr.cpp)
+target_link_libraries(exam_input_mgr_dg dyn_dgraph_mgr)
+target_compile_definitions(exam_input_mgr_dg PRIVATE DGRAPH=1)

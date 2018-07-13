@@ -15,7 +15,7 @@
 DEFINE_string(graph, "", "input graph");
 DEFINE_int32(budget, 10, "budget");
 DEFINE_int32(end_tm, 100, "end time");
-DEFINE_int32(batch_sz, 1, "batch size");
+DEFINE_int32(batch, 100, "batch size");
 DEFINE_int32(L, 10, "maximum lifetime");
 DEFINE_double(eps, 0.2, "epsilon");
 DEFINE_bool(save, true, "save results or not");
@@ -32,32 +32,35 @@ int main(int argc, char* argv[]) {
 #endif
 
     std::vector<std::tuple<int, double, int>> rst;
-    std::map<int, std::vector<IntPr>, std::greater<int>> edge_batch;
+    std::map<int, IntPrV, std::greater<int>> l_edges;  // decreading order of l
 
     printf("\ttime\tval\tocals\tn_algs\n");
-    int t = 0, num = 0, ocalls = 0;
+    int t = 0, ocalls = 0, n = 0;
     ioutils::TSVParser ss(FLAGS_graph);
     while (ss.next()) {
         int u = ss.get<int>(0), v = ss.get<int>(1), l = ss.get<int>(2);
-        edge_batch[l].emplace_back(u, v);
-        if (++num == FLAGS_batch_sz) {
-            for (auto& pr : edge_batch) hist.feedAndUpdate(pr.first, pr.second);
+        l_edges[l].emplace_back(u, v);
+        if (++n < FLAGS_batch) continue;
+        n = 0;
+        t += FLAGS_batch;
 
-            for (auto& pr : edge_batch)
-                if (pr.first > 1) hist.bufEdges(pr.first, pr.second);
-
-            double val = hist.getResult();
-            ocalls += hist.statOracleCalls();
-            rst.emplace_back(++t, val, ocalls);
-
-            edge_batch.clear();
-            hist.next();
-            num = 0;
-
-            printf("\t%5d\t%5.0f\t%6d\t%3d\r", t, val, ocalls,
-                   hist.getNumAlgs());
-            fflush(stdout);
+        for (auto& pr : l_edges) {
+            hist.feedAndUpdate(pr.first, pr.second);
+            // only buffer edges w/ l>=2 as edges w/ l=1 expire in next step
+            if (pr.first > 1) hist.bufEdges(pr.first, pr.second);
         }
+
+        l_edges.clear();
+
+        double val = hist.getResult();
+        ocalls += hist.statOracleCalls();
+        rst.emplace_back(t, val, ocalls);
+
+        hist.next();
+
+        printf("\t%5d\t%5.0f\t%6d\t%3d\r", t, val, ocalls, hist.getNumAlgs());
+        fflush(stdout);
+
         if (t == FLAGS_end_tm) break;
     }
     printf("\n");

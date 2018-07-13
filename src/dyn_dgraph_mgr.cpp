@@ -4,12 +4,6 @@
  */
 #include "dyn_dgraph_mgr.h"
 
-std::vector<int> DynDGraphMgr::getNodes() const {
-    std::vector<int> nodes;
-    for (auto& pr : nd_cc_) nodes.push_back(pr.first);
-    return nodes;
-}
-
 int DynDGraphMgr::getCC(const int u) {
     if (nd_cc_.find(u) != nd_cc_.end())
         return nd_cc_.at(u);
@@ -75,7 +69,7 @@ std::vector<int> DynDGraphMgr::getAffectedNodes() {
     SCCVisitor<dir::DGraph> dfs(dag_);
     dfs.performDFS();
 
-    // CCs in topological order
+    // new CCs in topological order
     auto new_ccs = dfs.getCCSorted();
 
     // CC connections
@@ -105,11 +99,9 @@ std::vector<int> DynDGraphMgr::getAffectedNodes() {
             modified.insert(c0);
         }
         for (int i = 1; i < ccs.size(); i++) {
-            int ci = ccs[i];
-            if (cc_bitpos_.find(ci) == cc_bitpos_.end())
-                genHLLCounter(getPos(ci));
-            int pos = getPos(ci);
-            mergeCounter(getPos(c0), pos);
+            int ci = ccs[i], pos_i = getPos(ci);
+            if (cc_bitpos_.find(ci) == cc_bitpos_.end()) genHLLCounter(pos_i);
+            mergeCounter(getPos(c0), pos_i);
             modified.insert(c0);
             deleteCC(ci);
         }
@@ -119,8 +111,7 @@ std::vector<int> DynDGraphMgr::getAffectedNodes() {
     dir::DGraph sub_dag;
     for (auto& edge : new_cc_edges_) {
         int ci = co_cn.at(edge.first), cj = co_cn.at(edge.second);
-        if (ci != cj && modified.find(cj) == modified.end() &&
-            !sub_dag.isEdge(ci, cj))
+        if (ci != cj && modified.find(cj) == modified.end())
             sub_dag.addEdge(ci, cj);
     }
     new_cc_edges_.clear();
@@ -132,29 +123,29 @@ std::vector<int> DynDGraphMgr::getAffectedNodes() {
     // update CC bits in topological order
     for (auto it = new_ccs.rbegin(); it != new_ccs.rend(); it++) {
         int cj = *it;
-        if (modified.find(cj) != modified.end()) {  // if cj is modified
-            reverseFanOut(dag_, cj, modified);      // then do reverse fan-out
-        } else {  // if an old CC has new in-coming edges
+        if (modified.find(cj) != modified.end()) {
+            // if cj is modified, then do reverse fan-out
+            reverseFanOut(dag_, cj, modified);
+        } else {
+            // else if an old CC has new in-coming edges
             reverseFanOut(sub_dag, cj, modified);
         }
     }
 
     // update node-cc mapping
-    // TODO: improve efficiency
     std::vector<int> affected_nodes;
     for (auto& pr : nd_cc_) {
+        // use ref: because we will update cc of nd later
         int nd = pr.first, &cc = pr.second;
-        // NOTE: If a CC is singleton in previous step, then after updating the
-        // DAG in Line 130, this CC will disappear in current step.
+        // cc may not in current DAG (thus not in co_cn) if cc is singleton
+        // previously.
         if (co_cn.find(cc) != co_cn.end()) {
             cc = co_cn.at(cc);
-            if (modified.find(cc) != modified.end())
+            if (modified.find(cc) != modified.end()) {
                 affected_nodes.push_back(nd);
+            }
         }
     }
-
-    // printf("affected nodes: %lu\n", affected_nodes.size());
-
     return affected_nodes;
 }
 
@@ -166,19 +157,4 @@ void DynDGraphMgr::clear(const bool deep) {
         dag_.clear();
         while (!recycle_bin_.empty()) recycle_bin_.pop();
     }
-}
-
-double DynDGraphMgr::getReward(const int node) const { return estimate(node); }
-double DynDGraphMgr::getReward(const std::vector<int>& S) const {
-    return estimate(S.begin(), S.end());
-}
-double DynDGraphMgr::getReward(const std::unordered_set<int>& S) const {
-    return estimate(S.begin(), S.end());
-}
-double DynDGraphMgr::getGain(const int u, const std::vector<int>& S) const {
-    return getGain(u, S.begin(), S.end());
-}
-double DynDGraphMgr::getGain(const int u,
-                             const std::unordered_set<int>& S) const {
-    return getGain(u, S.begin(), S.end());
 }
