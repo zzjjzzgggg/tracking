@@ -21,7 +21,7 @@ private:
     int getCC(const int u);
 
     // Assign cc a position in bits_ vector and return the pos.
-    int regPos(const int cc);
+    int newPos(const int cc);
 
     inline int getPos(const int cc) const { return cc_bitpos_.at(cc); }
     inline bool exists(const int cc) const {
@@ -29,7 +29,7 @@ private:
     }
 
     // delete CC and mark its pos in bits_ as an available possition
-    void deleteCC(const int cc);
+    void delCC(const int cc);
 
     // do a BFS from node cv along its in-edges, each node in the BFS tree is
     // inserted into set modified.

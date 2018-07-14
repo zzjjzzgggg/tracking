@@ -12,18 +12,16 @@ int DynDGraphMgr::getCC(const int u) {
     return u;
 }
 
-int DynDGraphMgr::regPos(const int cc) {
+int DynDGraphMgr::newPos(const int cc) {
     // if cc is an existing cc
     if (exists(cc)) return getPos(cc);
-
     // then try to find an available pos in recycle bin
     if (!recycle_bin_.empty()) {
         int pos = recycle_bin_.top();
         recycle_bin_.pop();
-        cc_bitpos_[cc] = pos;  // register this CC in CC-pos mapping
+        cc_bitpos_[cc] = pos;
         return pos;
     }
-
     // otherwise realloc new space
     int pos = bits_.size();
     bits_.resize(pos + units_per_counter_, 0);
@@ -31,7 +29,7 @@ int DynDGraphMgr::regPos(const int cc) {
     return pos;
 }
 
-void DynDGraphMgr::deleteCC(const int cc) {
+void DynDGraphMgr::delCC(const int cc) {
     int pos = cc_bitpos_.at(cc);
     // clean range [start, end)
     auto start = bits_.begin();
@@ -100,15 +98,15 @@ std::vector<int> DynDGraphMgr::getAffectedNodes() {
         int c0 = ccs[0];
         // if the CC is newly created, then generate bits for it
         if (!exists(c0)) {
-            genHLLCounter(regPos(c0));
+            genHLLCounter(newPos(c0));
             modified.insert(c0);
         }
         for (int i = 1; i < ccs.size(); i++) {
             int ci = ccs[i];
-            if (!exists(ci)) genHLLCounter(regPos(ci));
+            if (!exists(ci)) genHLLCounter(newPos(ci));
             mergeCounter(getPos(c0), getPos(ci));
             modified.insert(c0);
-            deleteCC(ci);
+            delCC(ci);
         }
     }
 
