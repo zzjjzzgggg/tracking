@@ -14,7 +14,7 @@
 
 DEFINE_string(graph, "", "input graph");
 DEFINE_int32(end_tm, 100, "end time");
-DEFINE_int32(batch, 10, "batch size");
+DEFINE_int32(batch, 1, "batch size");
 
 void evalGetAffectedNodes() {
 #ifndef DGRAPH
@@ -34,7 +34,7 @@ void evalGetAffectedNodes() {
 
         auto nodes = input_mgr.getAffectedNodes();
 
-        printf("\t%5d\t%lu\r", t, nodes.size());
+        printf("\t%-12d%-12lu\r", t, nodes.size());
         fflush(stdout);
 
         if (t == FLAGS_end_tm) break;

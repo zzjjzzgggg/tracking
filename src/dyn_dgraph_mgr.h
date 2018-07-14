@@ -41,7 +41,7 @@ private:
                    const InputIter last) const;
 
 public:
-    DynDGraphMgr(const int p = 8) : HyperANF(p), InputMgr() {}
+    DynDGraphMgr(const int p = 10) : HyperANF(p), InputMgr() {}
 
     // copy constructor
     DynDGraphMgr(const DynDGraphMgr& o)
