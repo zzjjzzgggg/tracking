@@ -33,6 +33,7 @@ private:
         }
 
         inline void feedEdges(const IntPrV& edges) {
+            if (edges.empty()) return;
             sieve_ptr_->feedEdges(edges);
         }
 
@@ -54,13 +55,6 @@ private:
 
     std::list<Alg*> algs_;  // a list of Alg instances
     std::vector<IntPrV> edge_buf_;
-
-private:
-    /**
-     * Remove epsion-reduction alg instances from the list according instances'
-     * current output.
-     */
-    void rmRedundancy();
 
 public:
     HistApprox(const int L, const int budget, const double eps)
@@ -84,7 +78,13 @@ public:
      * Feed a batch of edges with lifetime l to instances with l' <= l.
      * Need to scan alg. instances in in the list from head to tail.
      */
-    void feedAndUpdate(const int l, const IntPrV& edges);
+    void process(const int l, const IntPrV& edges);
+
+    /**
+     * Remove epsion-reduction alg instances from the list according instances'
+     * current output.
+     */
+    void reduce();
 
     double getResult() const { return algs_.front()->val_; }
 
@@ -101,50 +101,40 @@ public:
 
 // implementations
 template <class InputMgr>
-void HistApprox<InputMgr>::feedAndUpdate(const int l, const IntPrV& edges) {
+void HistApprox<InputMgr>::process(const int l, const IntPrV& edges) {
+    // if list is empty or its tail has smaller l, then create new alg
+    if (algs_.empty() || algs_.back()->l_ < l)
+        algs_.push_back(new Alg(l, budget_, eps_));
+
+    auto job = [&edges](Alg* alg) {
+        alg->feedEdges(edges);
+        alg->update();
+    };
+    std::vector<std::future<void>> futures;
+    // update each alg with l_<=l
     auto it = algs_.begin();
-    while (it != algs_.end() && (*it)->l_ <= l) {
-        (*it)->feedEdges(edges);
-        (*it)->update();
-        ++it;
-    }
+    for (; it != algs_.end() && (*it)->l_ <= l; ++it)
+        futures.push_back(std::async(std::launch::async, job, *it));
+    for (auto& future: futures) future.get();
+    if (it == algs_.end()) return;
 
+    // create new alg before succ
     auto succ = it;
-
-    // check whether or not need to create a new Alg instance
-    if (succ == algs_.end()) {  // reach tail?
-        auto tail = algs_.rbegin();
-        // create a new Alg if the list is empty or its tail has smaller l
-        if (tail == algs_.rend() || (*tail)->l_ < l) {
-            Alg* alg = new Alg(l, budget_, eps_);
-            alg->feedEdges(edges);
-            alg->update();
-            algs_.insert(succ, alg);
-        }
-    } else {
-        bool flag =
-            (succ == algs_.begin())
-                ? true
-                : (*--it)->l_ < l && (*succ)->val_ < (*it)->val_ * (1 - eps_);
-        // create an Alg based on its succ
-        if (flag) {
-            Alg* alg = new Alg(*(*succ));
-            alg->l_ = l;
-            alg->clear();
-            alg->feedEdges(edges);
-            for (int ll = l; ll < (*succ)->l_; ll++) {
-                const auto& history = edge_buf_[(cur_ + ll - 1) % L_];
-                if (!history.empty()) alg->feedEdges(history);
-            }
-            alg->update();
-            algs_.insert(succ, alg);
-        }
+    if ((succ == algs_.begin()) || (*succ)->val_ < (*--it)->val_ * (1 - eps_)) {
+        // create alg based on its successor
+        Alg* alg = new Alg(*(*succ));
+        alg->l_ = l;
+        alg->clear();
+        alg->feedEdges(edges);
+        for (int ll = l; ll < (*succ)->l_; ll++)
+            alg->feedEdges(edge_buf_[(cur_ + ll - 1) % L_]);
+        alg->update();
+        algs_.insert(succ, alg);
     }
-    rmRedundancy();
 }
 
 template <class InputMgr>
-void HistApprox<InputMgr>::rmRedundancy() {
+void HistApprox<InputMgr>::reduce() {
     auto start = algs_.begin();
     while (start != algs_.end()) {
         double bound = (*start)->val_ * (1 - eps_);

@@ -15,8 +15,8 @@
 DEFINE_string(graph, "", "input graph");
 DEFINE_int32(budget, 10, "budget");
 DEFINE_int32(end_tm, 100, "end time");
-DEFINE_int32(batch, 100, "batch size");
-DEFINE_int32(L, 10, "maximum lifetime");
+DEFINE_int32(batch, 1, "batch size");
+DEFINE_int32(L, 10000, "maximum lifetime");
 DEFINE_double(eps, 0.2, "epsilon");
 DEFINE_bool(save, true, "save results or not");
 
@@ -34,7 +34,7 @@ int main(int argc, char* argv[]) {
     std::vector<std::tuple<int, double, int>> rst;
     std::map<int, IntPrV, std::greater<int>> l_edges;  // decreading order of l
 
-    printf("\ttime\tval\tocals\tn_algs\n");
+    printf("\t%-12s%-12s%-12s%-12s\n", "time", "value", "#calls", "#algs");
     int t = 0, ocalls = 0, n = 0;
     ioutils::TSVParser ss(FLAGS_graph);
     while (ss.next()) {
@@ -45,7 +45,8 @@ int main(int argc, char* argv[]) {
         t += FLAGS_batch;
 
         for (auto& pr : l_edges) {
-            hist.feedAndUpdate(pr.first, pr.second);
+            hist.process(pr.first, pr.second);
+            hist.reduce();
             // only buffer edges w/ l>=2 as edges w/ l=1 expire in next step
             if (pr.first > 1) hist.bufEdges(pr.first, pr.second);
         }
@@ -58,7 +59,7 @@ int main(int argc, char* argv[]) {
 
         hist.next();
 
-        printf("\t%5d\t%5.0f\t%6d\t%3d\r", t, val, ocalls, hist.getNumAlgs());
+        printf("\t%-12d%-12.0f%-12d%-12d\r", t, val, ocalls, hist.getNumAlgs());
         fflush(stdout);
 
         if (t == FLAGS_end_tm) break;

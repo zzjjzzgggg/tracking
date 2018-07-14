@@ -20,8 +20,13 @@ private:
     // Get the CC node u belongs to; otherwise return u itself as the CC.
     int getCC(const int u);
 
-    // Get an available pos from bits_.
-    int getPos(const int cc);
+    // Assign cc a position in bits_ vector and return the pos.
+    int regPos(const int cc);
+
+    inline int getPos(const int cc) const { return cc_bitpos_.at(cc); }
+    inline bool exists(const int cc) const {
+        return cc_bitpos_.find(cc) != cc_bitpos_.end();
+    }
 
     // delete CC and mark its pos in bits_ as an available possition
     void deleteCC(const int cc);

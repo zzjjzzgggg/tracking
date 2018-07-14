@@ -17,7 +17,6 @@
 DEFINE_string(graph, "", "input graph");
 DEFINE_int32(budget, 10, "budget");
 DEFINE_int32(end_tm, 100, "end time");
-DEFINE_int32(batch_sz, 1, "batch size");
 DEFINE_int32(L, 10, "maximum lifetime");
 DEFINE_bool(save, true, "save results or not");
 
@@ -34,30 +33,26 @@ int main(int argc, char* argv[]) {
 
     std::vector<std::tuple<int, double, int, int, int>> rst;
 
-    int t = 0, num = 0, oracle_calls = 0, naive_oracle_calls = 0;
+    int t = 0, oracle_calls = 0, naive_oracle_calls = 0;
     ioutils::TSVParser ss(FLAGS_graph);
-    printf("\ttime\tvalue\toracl-calls\n");
+    printf("\t%-12s%-12s%-12s\n", "time", "value", "#calls");
     while (ss.next()) {
         int u = ss.get<int>(0), v = ss.get<int>(1), l = ss.get<int>(2);
         eval.addEdge(u, v, l);
-        ++num;
-        if (num == FLAGS_batch_sz) {
-            auto& input_mgr = eval.getInputMgr();
-            GreedyAlg greedy(&input_mgr, FLAGS_budget);
-            double val = greedy.run();
-            oracle_calls += greedy.getOracleCalls();
-            int graph_sz = input_mgr.getNumNodes();
-            naive_oracle_calls += graph_sz * FLAGS_budget;
+        auto& input_mgr = eval.getInputMgr();
+        GreedyAlg greedy(&input_mgr, FLAGS_budget);
+        double val = greedy.run();
+        oracle_calls += greedy.getOracleCalls();
+        int graph_sz = input_mgr.getNumNodes();
+        naive_oracle_calls += graph_sz * FLAGS_budget;
 
-            rst.emplace_back(++t, val, oracle_calls, naive_oracle_calls,
-                             graph_sz);
+        rst.emplace_back(++t, val, oracle_calls, naive_oracle_calls, graph_sz);
 
-            eval.next();
-            num = 0;
+        eval.next();
 
-            printf("\t%5d\t%5.0f\t%6d\r", t, val, oracle_calls);
-            fflush(stdout);
-        }
+        printf("\t%-12d%-12.0f%-12d\r", t, val, oracle_calls);
+        fflush(stdout);
+
         if (t == FLAGS_end_tm) break;
     }
     printf("\n");

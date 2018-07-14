@@ -12,9 +12,9 @@ int DynDGraphMgr::getCC(const int u) {
     return u;
 }
 
-int DynDGraphMgr::getPos(const int cc) {
+int DynDGraphMgr::regPos(const int cc) {
     // if cc is an existing cc
-    if (cc_bitpos_.find(cc) != cc_bitpos_.end()) return cc_bitpos_.at(cc);
+    if (exists(cc)) return getPos(cc);
 
     // then try to find an available pos in recycle bin
     if (!recycle_bin_.empty()) {
@@ -49,9 +49,11 @@ void DynDGraphMgr::reverseFanOut(const dir::DGraph& G, const int cv,
     if (!G.isNode(cv)) return;
     const auto& nd = G[cv];
     for (auto ni = nd.beginInNbr(); ni != nd.endInNbr(); ni++) {
-        int cu = nd.getNbrID(ni);
-        mergeCounter(cc_bitpos_[cu], cc_bitpos_[cv]);
-        modified.insert(cu);
+        int cu = nd.getNbrID(ni), pos_u = getPos(cu), pos_v = getPos(cv);
+        if (!isGreaterEqual(pos_u, pos_v)) {
+            mergeCounter(pos_u, pos_v);
+            modified.insert(cu);
+        }
     }
 }
 
@@ -60,7 +62,10 @@ void DynDGraphMgr::addEdge(const int u, const int v) {
     // omit self-loop edges and edges already in DAG
     if (cu != cv && !dag_.isEdge(cu, cv)) {
         dag_.addEdge(cu, cv);
-        new_cc_edges_.emplace_back(cu, cv);
+        if (!exists(cu) || !exists(cv) ||
+            !isGreaterEqual(getPos(cu), getPos(cv))) {
+            new_cc_edges_.emplace_back(cu, cv);
+        }
     }
 }
 
@@ -94,14 +99,14 @@ std::vector<int> DynDGraphMgr::getAffectedNodes() {
     for (auto& ccs : cc_cc) {
         int c0 = ccs[0];
         // if the CC is newly created, then generate bits for it
-        if (cc_bitpos_.find(c0) == cc_bitpos_.end()) {
-            genHLLCounter(getPos(c0));
+        if (!exists(c0)) {
+            genHLLCounter(regPos(c0));
             modified.insert(c0);
         }
         for (int i = 1; i < ccs.size(); i++) {
-            int ci = ccs[i], pos_i = getPos(ci);
-            if (cc_bitpos_.find(ci) == cc_bitpos_.end()) genHLLCounter(pos_i);
-            mergeCounter(getPos(c0), pos_i);
+            int ci = ccs[i];
+            if (!exists(ci)) genHLLCounter(regPos(ci));
+            mergeCounter(getPos(c0), getPos(ci));
             modified.insert(c0);
             deleteCC(ci);
         }
