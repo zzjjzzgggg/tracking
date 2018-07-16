@@ -1,5 +1,6 @@
-add_library(dyn_dgraph_mgr dyn_dgraph_mgr.cpp)
+add_library(dyn_dgraph_mgr dyn_dgraph_mgr_v2.cpp)
 target_link_libraries(dyn_dgraph_mgr ${LIBRARIES})
+
 
 # test
 add_executable(test-me test.cpp)
@@ -73,7 +74,7 @@ target_compile_definitions(exam_random_dg PRIVATE DGRAPH=1)
 # target_link_libraries(exam_greedy_eval dyn_graph_mgr)
 
 
-
+# Input_Manager reading speed test
 ### bipartite graph
 add_executable(exam_input_mgr_bg exam_input_mgr.cpp)
 target_link_libraries(exam_input_mgr_bg ${LIBRARIES})
@@ -81,3 +82,12 @@ target_link_libraries(exam_input_mgr_bg ${LIBRARIES})
 add_executable(exam_input_mgr_dg exam_input_mgr.cpp)
 target_link_libraries(exam_input_mgr_dg dyn_dgraph_mgr)
 target_compile_definitions(exam_input_mgr_dg PRIVATE DGRAPH=1)
+
+# Evaluating nodes reward
+### bipartite graph
+add_executable(exam_eval_bg exam_eval.cpp)
+target_link_libraries(exam_eval_bg ${LIBRARIES})
+### general graph
+add_executable(exam_eval_dg exam_eval.cpp)
+target_link_libraries(exam_eval_dg dyn_dgraph_mgr)
+target_compile_definitions(exam_eval_dg PRIVATE DGRAPH=1)

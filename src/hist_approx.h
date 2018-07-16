@@ -11,15 +11,15 @@ template <class InputMgr>
 class HistApprox {
 private:
     /**
-     * SieveADN instance.
-     * Only process edges with lifetime no less than l
+     * SieveADN instance. Only process edges with lifetime no less than l.
      */
     class Alg {
+    private:
+        SieveADN<InputMgr>* sieve_ptr_;
+
     public:
         int l_;
-        double val_ = 0;  // current solution value of this algorithm instance
-
-        SieveADN<InputMgr>* sieve_ptr_;
+        double val_ = 0;
 
     public:
         Alg(const int l, const int budget, const double eps) : l_(l) {
@@ -30,6 +30,10 @@ private:
         // Copy constructor.
         Alg(const Alg& o) : l_(o.l_), val_(o.val_) {
             sieve_ptr_ = new SieveADN<InputMgr>(*o.sieve_ptr_);
+        }
+
+        inline void feedEdge(const int u, const int v) {
+            sieve_ptr_->feedEdge(u, v);
         }
 
         inline void feedEdges(const IntPrV& edges) {
@@ -45,6 +49,33 @@ private:
         inline void clear() { sieve_ptr_->clear(); }
 
         inline int getOracleCalls() { return sieve_ptr_->getOracleCalls(); }
+
+        std::vector<int> getSolution() const {
+            int i = sieve_ptr_->getResult().first;
+            return sieve_ptr_->getSolution(i);
+        }
+
+        void debug() const {
+            printf("\n=======debug start========\n");
+
+            sieve_ptr_->debug();
+
+            auto nodes = ioutils::loadVec<int>("sol.txt");
+            auto& input_mgr = sieve_ptr_->getInputMgr();
+            double val = input_mgr.getReward(nodes);
+            printf("reward by front SieveADN: %.2f\n", val);
+
+            InputMgr new_input_mgr;
+            ioutils::TSVParser ss("edges_v2.dat");
+            while (ss.next()) {
+                int u = ss.get<int>(0), v = ss.get<int>(1);
+                new_input_mgr.addEdge(u, v);
+            }
+            val = new_input_mgr.getReward(nodes);
+            printf("reward by new input manager: %.2f\n", val);
+
+            printf("\n=======debug end========\n");
+        }
 
     }; /* Alg */
 
@@ -72,13 +103,17 @@ public:
     void bufEdges(const int l, const IntPrV& edges) {
         auto& target = edge_buf_[(cur_ + l - 1) % L_];
         target.insert(target.end(), edges.begin(), edges.end());
-    };
+    }
+
+    void bufEdge(const int u, const int v, const int l) {
+        edge_buf_[(cur_ + l - 1) % L_].emplace_back(u, v);
+    }
 
     /**
-     * Feed a batch of edges with lifetime l to instances with l' <= l.
+     * Feed an edge with lifetime l to instances with l' <= l.
      * Need to scan alg. instances in in the list from head to tail.
      */
-    void process(const int l, const IntPrV& edges);
+    void process(const int u, const int v, const int l);
 
     /**
      * Remove epsion-reduction alg instances from the list according instances'
@@ -87,6 +122,9 @@ public:
     void reduce();
 
     double getResult() const { return algs_.front()->val_; }
+    void saveSolution(const std::string& filename) const {
+        ioutils::saveVec(algs_.front()->getSolution(), filename);
+    }
 
     int statOracleCalls();
     int getNumAlgs() const { return algs_.size(); }
@@ -97,17 +135,19 @@ public:
      */
     void next();
 
+    void debug() const { algs_.front()->debug(); }
+
 }; /* HistApprox */
 
 // implementations
 template <class InputMgr>
-void HistApprox<InputMgr>::process(const int l, const IntPrV& edges) {
+void HistApprox<InputMgr>::process(const int u, const int v, const int l) {
     // if list is empty or its tail has smaller l, then create new alg
     if (algs_.empty() || algs_.back()->l_ < l)
         algs_.push_back(new Alg(l, budget_, eps_));
 
-    auto job = [&edges](Alg* alg) {
-        alg->feedEdges(edges);
+    auto job = [u, v](Alg* alg) {
+        alg->feedEdge(u, v);
         alg->update();
     };
     std::vector<std::future<void>> futures;
@@ -115,17 +155,21 @@ void HistApprox<InputMgr>::process(const int l, const IntPrV& edges) {
     auto it = algs_.begin();
     for (; it != algs_.end() && (*it)->l_ <= l; ++it)
         futures.push_back(std::async(std::launch::async, job, *it));
-    for (auto& future: futures) future.get();
+    for (auto& future : futures) future.get();
     if (it == algs_.end()) return;
 
+    auto succ = it, prev = --it;
+
+    // if last updated alg.l_ = l, then return
+    if (succ != algs_.begin() && (*prev)->l_ == l) return;
+
     // create new alg before succ
-    auto succ = it;
-    if ((succ == algs_.begin()) || (*succ)->val_ < (*--it)->val_ * (1 - eps_)) {
-        // create alg based on its successor
+    if ((succ == algs_.begin()) || (*succ)->val_ < (*prev)->val_ * (1 - eps_)) {
+        // create alg_l based on its successor
         Alg* alg = new Alg(*(*succ));
         alg->l_ = l;
         alg->clear();
-        alg->feedEdges(edges);
+        alg->feedEdge(u, v);
         for (int ll = l; ll < (*succ)->l_; ll++)
             alg->feedEdges(edge_buf_[(cur_ + ll - 1) % L_]);
         alg->update();
@@ -169,19 +213,17 @@ int HistApprox<InputMgr>::statOracleCalls() {
 template <class InputMgr>
 void HistApprox<InputMgr>::next() {
     del_calls_ = 0;
-
     // If head SieveADN instance expires
     if (algs_.front()->l_ == 1) {
         delete algs_.front();
         algs_.pop_front();
     }
-
     // clear remaining SieveADN instances
+    int i = 0;
     for (auto it = algs_.begin(); it != algs_.end(); ++it) {
         (*it)->clear();
         (*it)->l_--;
     }
-
     // clear outdated edges
     edge_buf_[cur_].clear();
     cur_ = (cur_ + 1) % L_;

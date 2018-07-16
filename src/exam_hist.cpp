@@ -5,7 +5,7 @@
 #ifndef DGRAPH
 #include "dyn_bgraph_mgr.h"
 #else
-#include "dyn_dgraph_mgr.h"
+#include "dyn_dgraph_mgr_v2.h"
 #endif
 
 #include "hist_approx.h"
@@ -15,7 +15,6 @@
 DEFINE_string(graph, "", "input graph");
 DEFINE_int32(budget, 10, "budget");
 DEFINE_int32(end_tm, 100, "end time");
-DEFINE_int32(batch, 1, "batch size");
 DEFINE_int32(L, 10000, "maximum lifetime");
 DEFINE_double(eps, 0.2, "epsilon");
 DEFINE_bool(save, true, "save results or not");
@@ -32,26 +31,18 @@ int main(int argc, char* argv[]) {
 #endif
 
     std::vector<std::tuple<int, double, int>> rst;
-    std::map<int, IntPrV, std::greater<int>> l_edges;  // decreading order of l
 
     printf("\t%-12s%-12s%-12s%-12s\n", "time", "value", "#calls", "#algs");
     int t = 0, ocalls = 0, n = 0;
     ioutils::TSVParser ss(FLAGS_graph);
     while (ss.next()) {
         int u = ss.get<int>(0), v = ss.get<int>(1), l = ss.get<int>(2);
-        l_edges[l].emplace_back(u, v);
-        if (++n < FLAGS_batch) continue;
-        n = 0;
-        t += FLAGS_batch;
+        ++t;
 
-        for (auto& pr : l_edges) {
-            hist.process(pr.first, pr.second);
-            hist.reduce();
-            // only buffer edges w/ l>=2 as edges w/ l=1 expire in next step
-            if (pr.first > 1) hist.bufEdges(pr.first, pr.second);
-        }
-
-        l_edges.clear();
+        hist.process(u, v, l);
+        hist.reduce();
+        // only buffer edges with l>=2 as edges with l=1 expire in next step
+        if (l > 1) hist.bufEdge(u, v, l);
 
         double val = hist.getResult();
         ocalls += hist.statOracleCalls();

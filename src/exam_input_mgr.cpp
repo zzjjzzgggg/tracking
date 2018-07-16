@@ -7,7 +7,7 @@
 #ifndef DGRAPH
 #include "dyn_bgraph_mgr.h"
 #else
-#include "dyn_dgraph_mgr.h"
+#include "dyn_dgraph_mgr_v2.h"
 #endif
 
 #include <gflags/gflags.h>

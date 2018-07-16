@@ -103,6 +103,8 @@ public:
      */
     void clear(const bool deep = false);
 
+    void debug() const { input_mgr_.debug(); }
+
 }; /* SieveADN */
 
 // implementations

@@ -32,7 +32,7 @@ public:
     virtual ~InputMgr() {}
 
     virtual void addEdge(const int u, const int v) = 0;
-    virtual void addEdges(const std::vector<IntPr>& edges) {
+    virtual void addEdges(const IntPrV& edges) {
         for (auto& edge : edges) addEdge(edge.first, edge.second);
     }
 
@@ -61,6 +61,8 @@ public:
     virtual double getReward(const std::unordered_set<int>&) const = 0;
     virtual double getGain(const int, const std::vector<int>&) const = 0;
     virtual double getGain(const int, const std::unordered_set<int>&) const = 0;
+
+    virtual void debug() const {}
 
 }; /* InputMgr */
 

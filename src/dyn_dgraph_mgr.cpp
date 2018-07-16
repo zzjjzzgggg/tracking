@@ -14,7 +14,7 @@ int DynDGraphMgr::getCC(const int u) {
 
 int DynDGraphMgr::newPos(const int cc) {
     // if cc is an existing cc
-    if (exists(cc)) return getPos(cc);
+    if (exists(cc)) return cc_bitpos_.at(cc);
     // then try to find an available pos in recycle bin
     if (!recycle_bin_.empty()) {
         int pos = recycle_bin_.top();
@@ -47,9 +47,9 @@ void DynDGraphMgr::reverseFanOut(const dir::DGraph& G, const int cv,
     if (!G.isNode(cv)) return;
     const auto& nd = G[cv];
     for (auto ni = nd.beginInNbr(); ni != nd.endInNbr(); ni++) {
-        int cu = nd.getNbrID(ni), pos_u = getPos(cu), pos_v = getPos(cv);
-        if (!isGreaterEqual(pos_u, pos_v)) {
-            mergeCounter(pos_u, pos_v);
+        int cu = nd.getNbrID(ni);
+        if (!isGEq(cu, cv)) {
+            mergeCC(cu, cv);
             modified.insert(cu);
         }
     }
@@ -60,8 +60,7 @@ void DynDGraphMgr::addEdge(const int u, const int v) {
     // omit self-loop edges and edges already in DAG
     if (cu != cv && !dag_.isEdge(cu, cv)) {
         dag_.addEdge(cu, cv);
-        if (!exists(cu) || !exists(cv) ||
-            !isGreaterEqual(getPos(cu), getPos(cv))) {
+        if (!exists(cu) || !exists(cv) || !isGEq(cu, cv)) {
             new_cc_edges_.emplace_back(cu, cv);
         }
     }
@@ -98,13 +97,13 @@ std::vector<int> DynDGraphMgr::getAffectedNodes() {
         int c0 = ccs[0];
         // if the CC is newly created, then generate bits for it
         if (!exists(c0)) {
-            genHLLCounter(newPos(c0));
+            genCounter(c0);
             modified.insert(c0);
         }
         for (int i = 1; i < ccs.size(); i++) {
             int ci = ccs[i];
-            if (!exists(ci)) genHLLCounter(newPos(ci));
-            mergeCounter(getPos(c0), getPos(ci));
+            if (!exists(ci)) genCounter(ci);
+            mergeCC(c0, ci);
             modified.insert(c0);
             delCC(ci);
         }

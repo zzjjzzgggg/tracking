@@ -27,9 +27,13 @@ private:
     const InputMgr* input_ptr_;
     int budget_;
 
+    std::vector<int> chosen;
+
 public:
     GreedyAlg(const InputMgr* input, const int budget)
-        : input_ptr_(input), budget_(budget) {}
+        : input_ptr_(input), budget_(budget) {
+        chosen.reserve(budget_);
+    }
 
     /**
      * Run Greedy Algorithm on data provided by InputMgr.
@@ -41,9 +45,6 @@ public:
 
         for (int node : input_ptr_->getNodes()) pq.emplace(node);
 
-        std::vector<int> chosen;
-        chosen.reserve(budget_);
-
         double rwd = 0;
         int seq = 1;
         while (!pq.empty() && seq <= budget_) {
@@ -53,6 +54,7 @@ public:
                 chosen.push_back(e.node);
                 seq++;
                 rwd += e.gain;
+                // printf("[%d]: %.4f\n", e.node, e.gain);
             } else {
                 e.gain = input_ptr_->getGain(e.node, chosen);
                 e.seq = seq;
@@ -63,6 +65,10 @@ public:
     }
 
     int getOracleCalls() const { return input_ptr_->getOracleCalls(); }
+
+    void saveSolution(const std::string& filename) const {
+        ioutils::saveVec(chosen, filename);
+    }
 
 }; /* GreedyAlg */
 
