@@ -46,7 +46,7 @@ private:
     double prob(const int x) const { return 2 / (1 + std::exp(-.2 * x)) - 1; }
 
 public:
-    DIMStream(const int L, const int beta = 32) : L_(L) {
+    DIMStream(const int L, const int beta) : L_(L) {
         dim_.init();
         dim_.set_beta(beta);
         edge_buf_.resize(L);

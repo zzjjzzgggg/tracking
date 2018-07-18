@@ -14,6 +14,7 @@ DEFINE_string(graph, "", "input graph");
 DEFINE_int32(budget, 10, "budget");
 DEFINE_int32(end_tm, 10000, "end time");
 DEFINE_int32(L, 10000, "maximum lifetime");
+DEFINE_int32(beta, 32, "beta");
 
 int main(int argc, char *argv[]) {
     gflags::SetUsageMessage("usage:");
@@ -21,12 +22,14 @@ int main(int argc, char *argv[]) {
     osutils::Timer tm;
 
 #ifndef DGRAPH
-    DIMStream<DynBGraphMgr> dim(FLAGS_L);
+    DIMStream<DynBGraphMgr> dim(FLAGS_L, FLAGS_beta);
 #else
-    DIMStream<DynDGraphMgr> dim(FLAGS_L);
+    DIMStream<DynDGraphMgr> dim(FLAGS_L, FLAGS_beta);
 #endif
 
-    printf("\t%-12s%-12s\n", "time", "value");
+    std::vector<int> seeds;
+
+    printf("\t%-12s\n", "time");
     int t = 0;
     ioutils::TSVParser ss(FLAGS_graph);
     while (ss.next()) {
@@ -34,17 +37,19 @@ int main(int argc, char *argv[]) {
         dim.addEdge(u, v, l);
         ++t;
 
-        auto nodes = dim.infmax(FLAGS_budget);
-        auto input_mgr = dim.getInputMgr();
-        double inf = input_mgr.getReward(nodes);
+        seeds = dim.infmax(FLAGS_budget);
 
-        printf("\t%-12d%-12.0f\r", t, inf);
+        printf("\t%-12d\r", t);
         fflush(stdout);
 
         if (t == FLAGS_end_tm) break;
         dim.next();
     }
     printf("\n");
+
+    auto input_mgr = dim.getInputMgr();
+    double inf = input_mgr.getReward(seeds);
+    printf("inf: %.2f\n", inf);
 
     printf("cost time %s\n", tm.getStr().c_str());
     gflags::ShutDownCommandLineFlags();
