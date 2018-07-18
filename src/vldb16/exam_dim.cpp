@@ -21,12 +21,12 @@ int main(int argc, char *argv[]) {
     osutils::Timer tm;
 
 #ifndef DGRAPH
-    DIMStream<DynBGraphMgr > dim(FLAGS_L);
+    DIMStream<DynBGraphMgr> dim(FLAGS_L);
 #else
     DIMStream<DynDGraphMgr> dim(FLAGS_L);
 #endif
 
-    printf("\t%-12s%-12s%-12s\n", "time", "hist", "dim");
+    printf("\t%-12s%-12s\n", "time", "value");
     int t = 0;
     ioutils::TSVParser ss(FLAGS_graph);
     while (ss.next()) {
@@ -37,19 +37,14 @@ int main(int argc, char *argv[]) {
         auto nodes = dim.infmax(FLAGS_budget);
         auto input_mgr = dim.getInputMgr();
         double inf = input_mgr.getReward(nodes);
-        double infest = dim.infest(nodes);
 
-        printf("\t%-12d%-12.0f%-12.0f\r", t, inf, infest);
+        printf("\t%-12d%-12.0f\r", t, inf);
         fflush(stdout);
 
         if (t == FLAGS_end_tm) break;
         dim.next();
     }
     printf("\n");
-
-    // auto nodes = dim.infmax(FLAGS_budget);
-    // ioutils::saveVec(nodes, "dim_seeds_exam.dat");
-
 
     printf("cost time %s\n", tm.getStr().c_str());
     gflags::ShutDownCommandLineFlags();
