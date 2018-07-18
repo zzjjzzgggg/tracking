@@ -33,13 +33,16 @@ public:
         return input_mgr;
     }
 
-    void debug() const {
-        auto wt_ptr = ioutils::getIOOut("eval.edges");
+    void saveEdges(const std::string& filename) const {
+        auto wt_ptr = ioutils::getIOOut(filename);
         for (auto& edges : edge_buf_) {
-            for(auto& edge: edges)
+            for (auto& edge : edges)
                 wt_ptr->save("{}\t{}\n"_format(edge.first, edge.second));
         }
+        printf("saved to %s\n", filename.c_str());
     }
+
+    void debug() const { saveEdges("eval.edges"); }
 
 }; /* EvalStream */
 

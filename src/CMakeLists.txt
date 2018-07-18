@@ -91,3 +91,7 @@ target_link_libraries(exam_eval_bg ${LIBRARIES})
 add_executable(exam_eval_dg exam_eval.cpp)
 target_link_libraries(exam_eval_dg dyn_dgraph_mgr)
 target_compile_definitions(exam_eval_dg PRIVATE DGRAPH=1)
+
+
+
+add_subdirectory(vldb16)

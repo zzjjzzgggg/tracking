@@ -76,10 +76,20 @@ void test_lru() {
     cache.insert("foo1", "bar1");
 }
 
+void test_hash() {
+    int x = 184615, y = 364376;
+    size_t val1 = (std::hash<int>()(x) << 32) | std::hash<int>()(y);
+    size_t val2 = (std::hash<int>()(y) << 32) | std::hash<int>()(x);
+
+    std::cout << val1 << std::endl;
+    std::cout << val2 << std::endl;
+}
+
 int main(int argc, char* argv[]) {
     // test_bit_max();
     // test_copy_in_list();
-    test_lru();
+    // test_lru();
+    test_hash();
 
     return 0;
 }

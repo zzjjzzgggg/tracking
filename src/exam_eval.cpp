@@ -16,9 +16,11 @@
 DEFINE_string(graph, "", "input graph");
 DEFINE_string(nodes, "", "nodes");
 DEFINE_int32(budget, 10, "budget");
-DEFINE_int32(end_tm, 1000, "end time");
+DEFINE_int32(end_tm, 10000, "end time");
 DEFINE_int32(L, 10000, "maximum lifetime");
-DEFINE_bool(decay, true, "decay or not");
+DEFINE_bool(decay, true, "decay or nodecay");
+DEFINE_bool(save_edges, false, "save edges to file");
+DEFINE_bool(eval_nodes, false, "evaluate the influence of a set of nodes");
 
 int main(int argc, char* argv[]) {
     gflags::SetUsageMessage("usage:");
@@ -48,11 +50,19 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    auto input_mgr = eval.getInputMgr();
+    if (FLAGS_save_edges) {
+        std::string filename = strutils::insertMiddle(
+            FLAGS_graph, "T{}"_format(strutils::prettyNumber(FLAGS_end_tm)),
+            "edges");
+        eval.saveEdges(filename);
+    }
 
-    auto nodes = ioutils::loadVec<int>(FLAGS_nodes);
-    double rwd = input_mgr.getReward(nodes);
-    printf("getReward: %.4f\n", rwd);
+    if (FLAGS_eval_nodes) {
+        auto input_mgr = eval.getInputMgr();
+        auto nodes = ioutils::loadVec<int>(FLAGS_nodes);
+        double rwd = input_mgr.getReward(nodes);
+        printf("getReward: %.4f\n", rwd);
+    }
 
     printf("cost time %s\n", tm.getStr().c_str());
     gflags::ShutDownCommandLineFlags();
