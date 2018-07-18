@@ -9,7 +9,7 @@
 #endif
 
 #include "eval_stream.h"
-// #include "greedy_alg.h"
+#include "greedy_alg.h"
 
 #include <gflags/gflags.h>
 
@@ -21,6 +21,7 @@ DEFINE_int32(L, 10000, "maximum lifetime");
 DEFINE_bool(decay, true, "decay or nodecay");
 DEFINE_bool(save_edges, false, "save edges to file");
 DEFINE_bool(eval_nodes, false, "evaluate the influence of a set of nodes");
+DEFINE_bool(greedy, false, "run greedy at the end of time");
 
 int main(int argc, char* argv[]) {
     gflags::SetUsageMessage("usage:");
@@ -62,6 +63,13 @@ int main(int argc, char* argv[]) {
         auto nodes = ioutils::loadVec<int>(FLAGS_nodes);
         double rwd = input_mgr.getReward(nodes);
         printf("getReward: %.4f\n", rwd);
+    }
+
+    if(FLAGS_greedy) {
+        auto input_mgr = eval.getInputMgr();
+        GreedyAlg greedy(&input_mgr, FLAGS_budget);
+        double val = greedy.run();
+        printf("greedy: %.4f\n", val);
     }
 
     printf("cost time %s\n", tm.getStr().c_str());

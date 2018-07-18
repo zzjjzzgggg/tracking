@@ -44,7 +44,6 @@ int main(int argc, char* argv[]) {
         ++t;
 
         auto input_mgr = eval.getInputMgr();
-
         GreedyAlg greedy(&input_mgr, FLAGS_budget);
         val = greedy.run();
         // greedy.saveSolution("greedy_sol_v2.txt");
