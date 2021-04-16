@@ -26,7 +26,7 @@ public:
         cur_ = (cur_ + 1) % L_;
     }
 
-    InputMgr getInputMgr() {
+    const InputMgr getInputMgr() {
         InputMgr input_mgr;
         for (auto& edges : edge_buf_) input_mgr.addEdges(edges);
         input_mgr.getAffectedNodes();

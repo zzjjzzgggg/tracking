@@ -44,7 +44,7 @@ int main(int argc, char* argv[]) {
             if (num == FLAGS_batch_sz) {
                 auto& input_mgr = eval.getInputMgr();
                 auto samples =
-                    rngutils::choice(input_mgr.getNodes(), FLAGS_budget, rng);
+                    rngutils::choose(input_mgr.getNodes(), FLAGS_budget, rng);
                 double val = input_mgr.getReward(samples);
                 vals[t++] += val;
 
@@ -70,7 +70,7 @@ int main(int argc, char* argv[]) {
     std::string ano =
         "#graph: {}\nbudget: {}\n#batch size: {}\n#end time: {}\n"_format(
             FLAGS_graph, FLAGS_budget, FLAGS_batch_sz, FLAGS_end_tm);
-    ioutils::savePrVec(rst, ofnm, true, "{}\t{:.1f}\n", ano);
+    ioutils::savePrVec(rst, ofnm, "{}\t{:.1f}\n", ano,true);
 
     printf("cost time %s\n", tm.getStr().c_str());
     gflags::ShutDownCommandLineFlags();

@@ -74,7 +74,9 @@ public:
 
     // Run DFS to identify CCs in DAG, return affected nodes.
     // will use new_cc_edges_.
-    std::vector<int> getAffectedNodes() override;
+    std::vector<int> getAffectedNodes() override{
+    return std::vector<int>(affected_nodes_.begin(), affected_nodes_.end());
+    }
 
     void clear(const bool deep = false) override;
     std::vector<int> getNodes() const override {

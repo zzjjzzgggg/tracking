@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
             "{}\n#epsilon: "
             "{:.2f}\n",
             FLAGS_graph, FLAGS_budget, FLAGS_batch, FLAGS_end_tm, FLAGS_eps);
-        ioutils::saveTupleVec(rst, ofnm, true, "{}\t{:.1f}\t{}\n", ano);
+        ioutils::saveTupleVec(rst, ofnm,  "{}\t{:.1f}\t{}\n", ano,true);
     }
 
     printf("cost time %s\n", tm.getStr().c_str());

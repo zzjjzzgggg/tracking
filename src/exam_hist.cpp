@@ -64,7 +64,7 @@ int main(int argc, char* argv[]) {
             "hist_K{}T{}e{:g}"_format(
                 FLAGS_budget, strutils::prettyNumber(FLAGS_end_tm), FLAGS_eps),
             "dat");
-        ioutils::saveTripletVec(rst, ofnm, true, "{}\t{:.2f}\t{}\n");
+        ioutils::saveTripletVec(rst, ofnm, "{}\t{:.2f}\t{}\n");
     }
 
     printf("cost time %s\n", tm.getStr().c_str());

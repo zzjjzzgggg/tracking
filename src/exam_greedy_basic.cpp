@@ -70,7 +70,7 @@ int main(int argc, char* argv[]) {
             "greedy_basic_K{}T{}"_format(FLAGS_budget,
                                          strutils::prettyNumber(FLAGS_end_tm)),
             "dat");
-        ioutils::saveTupleVec(rst, ofnm, true, "{}\t{:.2f}\t{}\t{}\t{}\n");
+        ioutils::saveTupleVec(rst, ofnm, "{}\t{:.2f}\t{}\t{}\t{}\n");
     }
 
     printf("cost time %s\n", tm.getStr().c_str());

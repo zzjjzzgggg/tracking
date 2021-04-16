@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
         std::string ano =
             "#graph: {}\nbudget: {}\n#batch size: {}\n#end time: {}\n"_format(
                 FLAGS_graph, FLAGS_budget, FLAGS_batch, FLAGS_end_tm);
-        ioutils::saveTupleVec(rst, ofnm, true, "{}\t{:.1f}\t{}\t{}\n", ano);
+        ioutils::saveTupleVec(rst, ofnm,  "{}\t{:.1f}\t{}\t{}\n", ano);
     }
 
     printf("cost time %s\n", tm.getStr().c_str());
